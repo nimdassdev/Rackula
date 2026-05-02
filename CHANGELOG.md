@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Double bay device selection (#1522, PR #1545)
 - Storage resilience — use safeStorage for all web storage access (#1392, PR #1530)
 - Make nginx DNS resolver configurable for Kubernetes (#1535, PR #1538)
+- Drop broken `npm install -g npm@11` from Dockerfile that broke dev/prod image builds (follow-up to PR #1600)
 
 ### Security
 
