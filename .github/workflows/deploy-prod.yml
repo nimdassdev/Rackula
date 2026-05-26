@@ -298,6 +298,7 @@ jobs:
           FRONTEND_IMAGE="${REGISTRY}/${IMAGE_NAME_LC}:${VERSION}" \
           PERSIST_IMAGE="${REGISTRY}/${IMAGE_NAME_LC}:v${VERSION}-persist" \
           API_IMAGE="${REGISTRY}/${IMAGE_NAME_LC}-api:${VERSION}" \
+          API_RUN_ENV="-e ALLOW_INSECURE_CORS=true" \
             scripts/verify-version-alignment.sh "$VERSION"
 
   scan-images:

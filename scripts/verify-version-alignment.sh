@@ -16,10 +16,16 @@ set -euo pipefail
 #   PERSIST_IMAGE   Persist frontend image   -> GET /version.json   (.version)
 #   API_IMAGE       API backend image        -> GET /api/version    (.version)
 #
+# The API image requires CORS_ORIGIN in production mode. For the version-check
+# (ephemeral container destroyed immediately after), pass ALLOW_INSECURE_CORS
+# or CORS_ORIGIN via API_RUN_ENV:
+#   API_RUN_ENV="-e ALLOW_INSECURE_CORS=true"
+#
 # Example:
 #   FRONTEND_IMAGE=ghcr.io/rackulalives/rackula:0.9.5 \
 #   PERSIST_IMAGE=ghcr.io/rackulalives/rackula:v0.9.5-persist \
 #   API_IMAGE=ghcr.io/rackulalives/rackula-api:0.9.5 \
+#   API_RUN_ENV="-e ALLOW_INSECURE_CORS=true" \
 #   scripts/verify-version-alignment.sh 0.9.5
 
 EXPECTED_VERSION="${1:-}"
@@ -46,9 +52,10 @@ trap cleanup EXIT
 failures=0
 checked=0
 
-# verify_image <label> <image_ref> <container_port> <path>
+# verify_image <label> <image_ref> <container_port> <path> [docker_run_args...]
 verify_image() {
-  local label="$1" image="$2" container_port="$3" path="$4"
+  local label="$1" image="$2" container_port="$3" path="$4"; shift 4
+  local run_args=("$@")
 
   # Count the attempt up front so every exit path (including failures below)
   # leaves a non-zero "checked" total — otherwise a sole image that fails here
@@ -57,7 +64,7 @@ verify_image() {
 
   echo "→ ${label}: starting ${image}"
   local cid
-  cid="$(docker run -d -P "$image")"
+  cid="$(docker run -d -P "${run_args[@]+"${run_args[@]}"} "$image")"
   CONTAINERS+=("$cid")
 
   # Resolve the ephemeral host port Docker mapped to the container port.
@@ -90,7 +97,7 @@ verify_image() {
 
 [[ -n "${FRONTEND_IMAGE:-}" ]] && verify_image "frontend (static)" "$FRONTEND_IMAGE" 8080 "/version.json"
 [[ -n "${PERSIST_IMAGE:-}" ]] && verify_image "frontend (persist)" "$PERSIST_IMAGE" 8080 "/version.json"
-[[ -n "${API_IMAGE:-}" ]] && verify_image "api" "$API_IMAGE" 3001 "/api/version"
+[[ -n "${API_IMAGE:-}" ]] && verify_image "api" "$API_IMAGE" 3001 "/api/version" ${API_RUN_ENV:-}
 
 if [[ "$checked" -eq 0 ]]; then
   echo "ERROR: no images to check; set FRONTEND_IMAGE, PERSIST_IMAGE, and/or API_IMAGE" >&2
