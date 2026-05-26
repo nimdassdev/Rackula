@@ -82,6 +82,15 @@ await doc.svg(svgElement, { x, y, width, height });
 
 **Low-Medium.** ~2-4 hours. One file modified, one dependency added. The core change is deleting the raster pipeline and plugging in `doc.svg()`.
 
+### AutoCAD Workflow Limitations (PDF)
+
+PDFIMPORT produces editable geometry but has inherent limitations:
+
+- **No unit metadata** — PDF carries no dimensional units. The user must SCALE by reference in AutoCAD (e.g., measure rail-to-rail distance, scale to 19").
+- **No grouping** — PDF has no structural grouping that survives PDFIMPORT. Every entity comes in independent. Window-select to move the rack as a unit.
+
+These are fundamental PDF limitations, not fixable in the export. For precise scaling and grouped editing, use DXF export instead.
+
 ### Verification
 
 1. Export a rack as PDF with various options (dark/light/transparent bg, front/rear/both, with/without legend)
@@ -133,7 +142,40 @@ DXF uses Y-up (origin bottom-left). Rackula SVG uses Y-down (origin top-left). T
 
 ### Scaling
 
-A standard 42U rack at Rackula's internal scale renders at ~800px. In DXF we can set this to 19" physical width (standard rack). Set `$INSUNITS` = 1 (inches) so AutoCAD knows the unit. User can then scale to their drawing's units.
+A standard 42U rack at Rackula's internal scale renders at ~800px. In DXF we map this to 19" physical width (standard rack). Set `$INSUNITS` = 1 (inches) so AutoCAD opens the drawing at 1:1 scale with correct unit metadata. A 42U rack is exactly 19 units wide — no manual SCALE operation required.
+
+This directly addresses the AutoCAD user feedback (dtwitkowski, #1729): the user wanted a "referenceable dimension" for SCALE. With `$INSUNITS = 1` and coordinates mapped to actual inches, the rack IS the reference. No dimension line or scale annotation needed.
+
+### Block Structure (Rack Grouping)
+
+Each rack is wrapped in a DXF BLOCK definition with an INSERT entity. This provides proper AutoCAD grouping — the user can MOVE, COPY, and ROTATE the entire rack as a unit, then EXPLODE for per-layer editing.
+
+```
+Layer 0:
+  └── INSERT of "RACKULA-RACK-<name>" block
+        Block definition contains:
+        ├── RACK-RAILS entities   — rails, mounting holes
+        ├── RACK-DEVICES entities — device polylines
+        ├── RACK-LABELS entities  — device names, U numbers
+        ├── RACK-GRID entities    — grid lines
+        └── RACK-LEGEND entities  — legend items
+```
+
+**Block name:** `RACKULA-RACK-<rackname>` — unique per rack in multi-rack layouts.
+
+**Workflow:**
+
+1. Open DXF in AutoCAD → each rack is a single INSERT entity
+2. MOVE, COPY, or ROTATE the rack as a unit
+3. EXPLODE when per-layer editing is needed → entities revert to named layers
+
+**Why blocks, not a perimeter rectangle:**
+
+- A perimeter rectangle is just another line — it doesn't group anything. The user still window-selects.
+- A BLOCK is the standard AutoCAD mechanism for grouping. INSERT/EXPLODE is fundamental CAD knowledge.
+- No nested blocks — single level keeps it simple. EXPLODE once for per-layer control.
+
+This addresses dtwitkowski's feedback (#1729): "The perimeter of the rack diagram should be a rectangle, or group of lines, so that the AutoCAD user can use MOVE, COPY, etc. as needed on the imported drawing."
 
 ### Files Modified
 
@@ -154,6 +196,8 @@ A standard 42U rack at Rackula's internal scale renders at ~800px. In DXF we can
 3. Open in a free DXF viewer (e.g., LibreCAD, Autodesk Viewer online) — verify visual fidelity
 4. Test with multi-rack layouts, bayed groups, half-width devices
 5. Verify no regressions in existing export formats
+6. DXF opens at 1:1 scale — a 42U rack is exactly 19 units wide, `$INSUNITS` = 1 (inches). No manual SCALE operation required.
+7. Each rack is a single INSERT entity (block) — user can MOVE/COPY/ROTATE as a unit, EXPLODE for per-layer editing
 
 ---
 
