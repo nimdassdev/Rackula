@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.1] - 2026-05-29
+
+### Added
+
+- Make YAML the default save format (#619, PR #1754)
+- Refit canvas on device orientation change in mobile mode (PR #1751)
+
+### Fixed
+
+- Half-width devices independently selectable at same U position (#1680, PR #1773)
+- Enable mouse/pointer tap-to-place in mobile mode (≤1024px viewport) (#1757, PR #1760)
+- Canvas fills full window in mobile mode (#1764, PR #1765)
+- E2E specs updated for YAML default save format (#1767, PR #1768)
+- Verify live frontend version only on no-API prod (#1770, PR #1771)
+- Remaining full-E2E failures — android long-press context menu + starter-library search (#1769, PR #1776)
+
+### Security
+
+- Remove Stryker mutation testing, fix CVE-2026-8723 (qs dependency) (#1774, PR #1775)
+
+### Technical
+
+- E2E regression tests for mouse tap-to-place in mobile mode (#1762, PR #1763)
+- NPM library feasibility & LOE spike documentation (#1758, PR #1761)
+- Scope deploy-dev.yml to relevant paths only (PR #1772)
+- Dependency bumps: dompurify, eslint-plugin-svelte, svelte, @lucide/svelte
+
 ## [0.10.0] - 2026-05-26
 
 ### Added
