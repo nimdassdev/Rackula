@@ -13,6 +13,8 @@ import {
   createOriginPolicyMiddleware,
   createRefreshedAuthSessionCookieHeader,
   createWriteAuthMiddleware,
+  createRateLimitMiddleware,
+  resolveClientIpFromHeaders,
   invalidateAuthSession,
   resolveAuthenticatedSessionClaims,
   resolveApiSecurityConfig,
@@ -320,6 +322,25 @@ export async function createApp(
       allowHeaders: ["Content-Type", "Authorization"],
     }),
   );
+
+  // Rate limiting — after CORS (so preflight is handled), before auth gate
+  // (so abusive requests are rejected before expensive auth checks).
+  if (securityConfig.rateLimitEnabled) {
+    const maxWindowMs = Math.max(
+      securityConfig.rateLimitWriteWindowMs,
+      securityConfig.rateLimitReadWindowMs,
+    );
+    const rateLimitMiddleware = createRateLimitMiddleware({
+      writeMaxRequests: securityConfig.rateLimitWriteMaxRequests,
+      writeWindowMs: securityConfig.rateLimitWriteWindowMs,
+      readMaxRequests: securityConfig.rateLimitReadMaxRequests,
+      readWindowMs: securityConfig.rateLimitReadWindowMs,
+      // Cleanup at least every window to bound stale entry retention.
+      cleanupIntervalMs: maxWindowMs,
+      entryTtlMs: maxWindowMs,
+    });
+    app.use("*", rateLimitMiddleware);
+  }
 
   // Better Auth instance — created with validated session secret
   const auth = securityConfig.authSessionSecret
@@ -682,12 +703,19 @@ export async function createApp(
           );
         }
 
-        // Prefer X-Real-IP (set by nginx to $remote_addr, not client-spoofable).
-        // Fall back to the LAST X-Forwarded-For entry (closest proxy, harder to spoof).
-        const realIp = c.req.header("x-real-ip")?.trim();
-        const forwardedFor = c.req.header("x-forwarded-for");
-        const lastProxy = forwardedFor?.split(",").pop()?.trim();
-        const ip = (realIp || lastProxy || "unknown").slice(0, 64);
+        const ip = resolveClientIpFromHeaders(c.req);
+        if (!ip) {
+          // Skip rate limiting when client IP cannot be determined.
+          // Using a shared bucket would let one noisy client throttle all
+          // other unidentifiable clients.
+          return c.json(
+            {
+              error: "Bad Request",
+              message: "Unable to determine client identity for rate limiting.",
+            },
+            400,
+          );
+        }
         const rateCheck = rateLimiter.check(ip);
         if (!rateCheck.allowed) {
           const retryAfterSeconds = Math.ceil(
