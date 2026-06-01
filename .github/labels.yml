@@ -152,25 +152,17 @@
   description: "Nice to have, no rush"
 
 # ── Status / workflow labels ─────────────────────────────────
+# NOTE: Pipeline status (ready/in-progress/in-review) is tracked via the
+# GitHub Project board Status field, not labels. Labels here cover only
+# orthogonal states that don't map to pipeline stages.
+
 - name: triage
   color: "D93F0B"
   description: "Needs triage and categorisation"
 
-- name: ready
-  color: "0E8A16"
-  description: "Ready for implementation"
-
 - name: blocked
   color: "B60205"
   description: "Blocked by external dependency"
-
-- name: in-progress
-  color: "1D76DB"
-  description: "Currently being worked on"
-
-- name: in-review
-  color: "8B5CF6"
-  description: "PR open, awaiting review"
 
 - name: defer
   color: "CCCCCC"

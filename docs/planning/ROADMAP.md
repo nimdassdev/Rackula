@@ -6,8 +6,10 @@ status: active
 
 # Rackula — Product Roadmap
 
-Strategic vision and the current sprint plan. For live work items, see
+Strategic vision and the active plan. For live work items, see
 [GitHub Milestones](https://github.com/RackulaLives/Rackula/milestones).
+For the kanban board tracking issue flow, see the
+[project board](https://github.com/orgs/RackulaLives/projects/2).
 
 ---
 

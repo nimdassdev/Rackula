@@ -102,13 +102,15 @@ Plans use `docs/plans/` (project override — v5 defaults to `docs/superpowers/p
 
 ## GitHub Issues Workflow
 
-GitHub Issues is the source of truth for task tracking.
+GitHub Issues is the source of truth for task tracking. Issue flow is
+tracked via the [project board](https://github.com/orgs/RackulaLives/projects/2):
+Backlog, Next Up, In Progress, In Review, Done.
 
 **Querying work:**
 
 ```bash
-# Find next task
-gh issue list --label ready --milestone "M1 -- LXC Build & Hardening" --state open
+# Find next task (issues in active milestone, Next Up status)
+gh issue list --milestone "M2 -- LXC Release & Stability" --state open
 
 # Get issue details
 gh issue view <number>

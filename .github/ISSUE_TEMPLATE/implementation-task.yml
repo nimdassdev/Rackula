@@ -1,6 +1,6 @@
 name: Implementation Task
 description: Internal task with full implementation details (maintainers only)
-labels: ['ready']
+labels: ['triage']
 type: Task
 body:
   - type: markdown
