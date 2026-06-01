@@ -36,7 +36,7 @@ test.describe("Starter Library", () => {
       page.getByRole("listitem", { name: "Server, 4U, server", exact: true }),
     ).toBeVisible();
 
-    // Network category (3 items)
+    // Network category (2 items)
     await expect(
       page.getByRole("listitem", {
         name: "Switch (24-Port), 1U, network",
@@ -49,9 +49,11 @@ test.describe("Starter Library", () => {
         exact: true,
       }),
     ).toBeVisible();
+
+    // Firewall category (1 item)
     await expect(
       page.getByRole("listitem", {
-        name: "Router/Firewall, 1U, network",
+        name: "Router/Firewall, 1U, firewall",
         exact: true,
       }),
     ).toBeVisible();
@@ -292,5 +294,4 @@ test.describe("Starter Library", () => {
       timeout: 5000,
     });
   });
-
 });
