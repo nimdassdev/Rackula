@@ -341,7 +341,9 @@
             const panAmount = e.deltaY; // Use deltaY (vertical scroll) as horizontal pan
             const transform = instance.getTransform();
             instance.moveTo(transform.x - panAmount, transform.y);
-            e.preventDefault();
+            if (e.cancelable) {
+              e.preventDefault();
+            }
             return true; // Tell panzoom to ignore this wheel event (we handled it)
           }
           // Normal scroll = zoom centered on cursor (panzoom default behavior)
@@ -736,7 +738,7 @@
         <button
           class="hint-dismiss"
           onclick={dismissOnboardingHint}
-          aria-label="Dismiss hint">x</button
+          aria-label="Dismiss hint">&times;</button
         >
       </div>
     {/if}
