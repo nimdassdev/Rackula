@@ -50,7 +50,12 @@ mkdir -p /opt/rackula/data
 mkdir -p /etc/nginx/snippets
 
 # Deploy config files from the release
-cp /opt/rackula/config/security-headers.conf /etc/nginx/snippets/security-headers.conf
+SECURITY_HEADERS_SRC="/opt/rackula/config/security-headers.conf"
+if [ ! -f "$SECURITY_HEADERS_SRC" ]; then
+  msg_error "Required config file missing: $SECURITY_HEADERS_SRC (release may be incomplete)"
+  exit 1
+fi
+cp "$SECURITY_HEADERS_SRC" /etc/nginx/snippets/security-headers.conf
 
 # Set ownership: frontend root-owned (served by nginx), API rackula-owned
 chown -R root:root /opt/rackula/frontend
@@ -103,7 +108,8 @@ cat <<EOF >/etc/nginx/snippets/rackula-api-token.conf
 set \$rackula_api_write_token "${API_WRITE_TOKEN}";
 set \$rackula_has_api_write_token 1;
 EOF
-chmod 600 /etc/nginx/snippets/rackula-api-token.conf
+chown root:www-data /etc/nginx/snippets/rackula-api-token.conf
+chmod 640 /etc/nginx/snippets/rackula-api-token.conf
 msg_ok "Generated API write token"
 
 msg_info "Configuring nginx"
@@ -130,16 +136,16 @@ systemctl enable -q --now nginx
 msg_ok "Created Services"
 
 msg_info "Verifying Services"
-for i in $(seq 1 10); do
+for i in $(seq 0 9); do
   if curl -sf --connect-timeout 2 --max-time 5 http://127.0.0.1:3001/health >/dev/null 2>&1; then
     msg_ok "Service running successfully"
     break
   fi
-  if [ "$i" -eq 10 ]; then
+  sleep 1
+  if [ "$i" -eq 9 ]; then
     msg_error "API failed to start within 10 seconds"
     exit 1
   fi
-  sleep 1
 done
 
 motd_ssh
