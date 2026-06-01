@@ -90,6 +90,50 @@ describe("Device Type Commands", () => {
       expect(store.removeDeviceTypeRaw).toHaveBeenCalledTimes(1);
       expect(store.removeDeviceTypeRaw).toHaveBeenCalledWith("server-1");
     });
+
+    it("undo skips removal when another device still references the type", () => {
+      const store = createMockStore();
+      const deviceType = createTestDeviceType({ slug: "server-1" });
+      const existingDevice = createTestDevice({ device_type: "server-1" });
+      store.getPlacedDevicesForType.mockReturnValue([existingDevice]);
+
+      const command = createAddDeviceTypeCommand(deviceType, store);
+      command.execute();
+      command.undo();
+
+      expect(store.removeDeviceTypeRaw).not.toHaveBeenCalled();
+    });
+
+    it("redo does not re-add type when undo skipped removal", () => {
+      const store = createMockStore();
+      const deviceType = createTestDeviceType({ slug: "server-1" });
+      const existingDevice = createTestDevice({ device_type: "server-1" });
+
+      const command = createAddDeviceTypeCommand(deviceType, store);
+      command.execute();
+      store.addDeviceTypeRaw.mockClear();
+
+      store.getPlacedDevicesForType.mockReturnValue([existingDevice]);
+      command.undo();
+      command.execute(); // redo — type was not removed, must not add duplicate
+
+      expect(store.addDeviceTypeRaw).not.toHaveBeenCalled();
+    });
+
+    it("redo re-adds type when undo removed it", () => {
+      const store = createMockStore();
+      const deviceType = createTestDeviceType({ slug: "server-1" });
+
+      const command = createAddDeviceTypeCommand(deviceType, store);
+      command.execute();
+      command.undo(); // no references (default mock []), type is removed
+      store.addDeviceTypeRaw.mockClear();
+
+      command.execute(); // redo — type was removed, must re-add
+
+      expect(store.addDeviceTypeRaw).toHaveBeenCalledTimes(1);
+      expect(store.addDeviceTypeRaw).toHaveBeenCalledWith(deviceType);
+    });
   });
 
   describe("createUpdateDeviceTypeCommand", () => {
