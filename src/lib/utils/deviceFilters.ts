@@ -7,8 +7,63 @@
 import Fuse from "fuse.js";
 import type { IFuseOptions } from "fuse.js";
 import type { DeviceType, DeviceCategory } from "$lib/types";
+import { DeviceCategorySchema } from "$lib/schemas";
 
 const DEFAULT_RACK_WIDTHS = [19];
+
+/**
+ * Display order for device categories in the palette.
+ * Ordered by typical usage frequency: common equipment first (servers, network),
+ * utility/structural items last (blanks, cable management, other).
+ * Every DeviceCategory value MUST appear here; a dev-only assertion
+ * enforces this so new categories cannot be silently dropped.
+ */
+export const categoryOrder: DeviceCategory[] = [
+  "server",
+  "network",
+  "firewall",
+  "patch-panel",
+  "power",
+  "storage",
+  "kvm",
+  "av-media",
+  "cooling",
+  "shelf",
+  "blank",
+  "cable-management",
+  "chassis",
+  "other",
+];
+
+if (import.meta.env.DEV) {
+  const missing = DeviceCategorySchema.options.filter(
+    (cat) => !categoryOrder.includes(cat),
+  );
+  if (missing.length > 0) {
+    throw new Error(
+      `categoryOrder is missing categories: ${missing.join(", ")}. ` +
+        "Add them to categoryOrder in deviceFilters.ts.",
+    );
+  }
+  const extra = categoryOrder.filter(
+    (cat) => !DeviceCategorySchema.options.includes(cat),
+  );
+  if (extra.length > 0) {
+    throw new Error(
+      `categoryOrder has unknown categories: ${extra.join(", ")}. ` +
+        "Remove them from categoryOrder in deviceFilters.ts.",
+    );
+  }
+  const unique = new Set(categoryOrder);
+  if (unique.size !== categoryOrder.length) {
+    const duplicates = categoryOrder.filter(
+      (cat, i) => categoryOrder.indexOf(cat) !== i,
+    );
+    throw new Error(
+      `categoryOrder has duplicate entries: ${duplicates.join(", ")}.`,
+    );
+  }
+}
 
 /**
  * Fuse.js configuration for fuzzy search.
