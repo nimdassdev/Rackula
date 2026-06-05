@@ -7,6 +7,12 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ## [26.6.1] - 2026-06-05
 
+The LXC release. For real this time. v26.6.0 proudly shipped a self-contained container
+and then forgot to install the runtime that actually runs the API, so the service never
+started. We shipped a box with no engine. Mortifying. This is the one that boots: the Bun
+runtime is installed, the API comes up, and /health answers. You wanted working LXC? You
+finally have working LXC.
+
 ### Fixed
 
 - LXC install now installs the Bun runtime, so the API starts. v26.6.0 containers shipped without a JS runtime and the API service could not start (#1909, PR #1910)
