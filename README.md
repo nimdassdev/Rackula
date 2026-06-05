@@ -18,7 +18,7 @@
   <img src="https://img.shields.io/github/v/release/RackulaLives/Rackula?style=for-the-badge&labelColor=44475a&color=ff79c6" alt="GitHub Release">
   <a href="https://github.com/RackulaLives/Rackula/pkgs/container/Rackula"><img src="https://img.shields.io/github/v/release/RackulaLives/Rackula?style=for-the-badge&labelColor=44475a&color=50fa7b&label=docker&logo=docker&logoColor=white" alt="Docker"></a>
   <img src="https://img.shields.io/badge/versioning-CalVer-ff79c6?style=for-the-badge&labelColor=44475a" alt="CalVer">
-  <a href="https://github.com/RackulaLives/Rackula/actions/workflows/test.yml"><img src="https://img.shields.io/github/actions/workflow/status/RackulaLives/Rackula/test.yml?style=for-the-badge&labelColor=44475a" alt="CI"></a>
+  <a href="https://github.com/RackulaLives/Rackula/actions/workflows/test.yml"><img src="https://img.shields.io/github/actions/workflow/status/RackulaLives/Rackula/test.yml?style=for-the-badge&labelColor=44475a&color=50fa7b" alt="CI"></a>
 </p>
 
 <p align="center">
