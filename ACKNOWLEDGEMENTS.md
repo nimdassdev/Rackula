@@ -98,6 +98,10 @@ To add yourself to this list, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Contributors who made merged pull requests in each release. For the full contributors table, see above.
 
+### v26.6.2
+
+- @ilanKushnir: feat(kws): fix module widths/depths, drop U from names, add magnetic patch panels (#1912)
+
 ---
 
 ## AI Development

@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Calendar Versioning](https://calver.org/).
 
+## [26.6.2] - 2026-06-05
+
+Maintenance release: release tooling and API dependency hygiene, plus an export fix and KWS device-library corrections.
+
+### Changed
+
+- KWS device library: corrected module widths and depths, dropped U-height from module names, and added magnetic patch panels (#1912)
+
+### Fixed
+
+- Export: clipPath IDs are now unique across racks, faces, and devices, preventing collisions in multi-rack dual-view exports (#1904, PR #1911)
+
+### Technical
+
+- Release tooling: contributors.sh is now portable to macOS BSD tools and bash 3.2, so the per-release contributor block is written when /release runs locally (#1907, PR #1923)
+- API: consolidated dependencies on Bun, removed the unused npm lockfile, and added a Dependabot bun ecosystem entry for /api (#1914, PR #1916)
+- API: package version is now aligned by the release flow (#1915, PR #1917)
+- Dependency updates: svelte, fuse.js, @types/node, and grouped GitHub Actions updates, plus api typescript and zod bumps (#1913, #1921, #1920, #1922, #1919, #1918)
+
 ## [26.6.1] - 2026-06-05
 
 The LXC release. For real this time. v26.6.0 proudly shipped a self-contained container
