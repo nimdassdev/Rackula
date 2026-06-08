@@ -17,7 +17,7 @@
 | `docs/planning/ROADMAP.md`                                              | Modify          | Replace sprint cadence with thematic plan, strip months/version ranges, add status markers |
 | `CLAUDE.md`                                                             | Modify          | Update versioning policy section and current milestones list                               |
 | `docs/superpowers/specs/2026-06-01-milestone-cadence-reframe-design.md` | Already created | Design spec (commit in this plan)                                                          |
-| GitHub milestones M1, M2, M3                                            | Rename          | Remove version suffixes from titles                                                        |
+| GitHub milestones M01, M02, M03                                         | Rename          | Remove version suffixes from titles                                                        |
 
 ---
 
@@ -25,37 +25,37 @@
 
 **Files:**
 
-- Modify: GitHub milestone M1 (current: "M1 -- LXC Build & Hardening, v26.5.x")
-- Modify: GitHub milestone M2 (current: "M2 -- LXC Release & Stability, v26.6.x")
-- Modify: GitHub milestone M3 (current: "M3 -- Data Format & Interop, v26.7.x")
+- Modify: GitHub milestone M01 (current: "M01 -- LXC Build & Hardening, v26.5.x")
+- Modify: GitHub milestone M02 (current: "M02 -- LXC Release & Stability, v26.6.x")
+- Modify: GitHub milestone M03 (current: "M03 -- Data Format & Interop, v26.7.x")
 
 - [ ] **Step 1: Get milestone numbers**
 
-Run: `gh api "repos/RackulaLives/Rackula/milestones?state=all&per_page=30" --jq '.[] | select(.title | test("M[1-3]")) | "\(.number) \(.title)"'`
+Run: `gh api "repos/RackulaLives/Rackula/milestones?state=all&per_page=30" --jq '.[] | select(.title | test("M0[1-3]")) | "\(.number) \(.title)"'`
 
 Expected: Three lines with milestone numbers and current titles
 
-- [ ] **Step 2: Rename M1**
+- [ ] **Step 2: Rename M01**
 
-Run: `gh api repos/RackulaLives/Rackula/milestones/{M1_NUMBER} -X PATCH -f title="M1 -- LXC Build & Hardening" --jq '.title'`
+Run: `gh api repos/RackulaLives/Rackula/milestones/{M01_NUMBER} -X PATCH -f title="M01 -- LXC Build & Hardening" --jq '.title'`
 
-Expected: `M1 -- LXC Build & Hardening`
+Expected: `M01 -- LXC Build & Hardening`
 
-- [ ] **Step 3: Rename M2**
+- [ ] **Step 3: Rename M02**
 
-Run: `gh api repos/RackulaLives/Rackula/milestones/{M2_NUMBER} -X PATCH -f title="M2 -- LXC Release & Stability" --jq '.title'`
+Run: `gh api repos/RackulaLives/Rackula/milestones/{M02_NUMBER} -X PATCH -f title="M02 -- LXC Release & Stability" --jq '.title'`
 
-Expected: `M2 -- LXC Release & Stability`
+Expected: `M02 -- LXC Release & Stability`
 
-- [ ] **Step 4: Rename M3**
+- [ ] **Step 4: Rename M03**
 
-Run: `gh api repos/RackulaLives/Rackula/milestones/{M3_NUMBER} -X PATCH -f title="M3 -- Data Format & Interop" --jq '.title'`
+Run: `gh api repos/RackulaLives/Rackula/milestones/{M03_NUMBER} -X PATCH -f title="M03 -- Data Format & Interop" --jq '.title'`
 
-Expected: `M3 -- Data Format & Interop`
+Expected: `M03 -- Data Format & Interop`
 
 - [ ] **Step 5: Verify all milestone titles**
 
-Run: `gh api "repos/RackulaLives/Rackula/milestones?state=all&per_page=30" --jq '.[] | select(.title | test("M[1-4]|Backlog")) | "\(.number) \(.title)"'`
+Run: `gh api "repos/RackulaLives/Rackula/milestones?state=all&per_page=30" --jq '.[] | select(.title | test("M0[1-4]|Backlog")) | "\(.number) \(.title)"'`
 
 Expected: Four milestone titles with no version suffixes, plus Backlog
 
@@ -104,60 +104,60 @@ Milestones are thematic groups with sequential ordering. Each maps to a GitHub m
 Status markers show current state: complete, in progress, next, planned.
 ```
 
-- [ ] **Step 3: Replace M1 heading and content**
+- [ ] **Step 3: Replace M01 heading and content**
 
 Old (line 49):
 
 ```text
-### M1 -- LXC Build & Hardening · ~June (`v26.6.x`)
+### M01 -- LXC Build & Hardening · ~June (`v26.6.x`)
 ```
 
 New:
 
 ```text
-### M1 -- LXC Build & Hardening (complete)
+### M01 -- LXC Build & Hardening (complete)
 ```
 
-- [ ] **Step 4: Replace M2 heading**
+- [ ] **Step 4: Replace M02 heading**
 
 Old (line 60):
 
 ```text
-### M2 -- LXC Release & Stability · ~July (`v26.7.x`)
+### M02 -- LXC Release & Stability · ~July (`v26.7.x`)
 ```
 
 New:
 
 ```text
-### M2 -- LXC Release & Stability (in progress)
+### M02 -- LXC Release & Stability (in progress)
 ```
 
-- [ ] **Step 5: Replace M3 heading**
+- [ ] **Step 5: Replace M03 heading**
 
 Old (line 70):
 
 ```text
-### M3 -- Data Format & Interop · ~Aug (`v26.8.x`)
+### M03 -- Data Format & Interop · ~Aug (`v26.8.x`)
 ```
 
 New:
 
 ```text
-### M3 -- Data Format & Interop (next)
+### M03 -- Data Format & Interop (next)
 ```
 
-- [ ] **Step 6: Replace M4 heading**
+- [ ] **Step 6: Replace M04 heading**
 
 Old (line 79):
 
 ```text
-### M4 -- Type Safety, Decomposition & Stability · ~September (`v26.9.x`)
+### M04 -- Type Safety, Decomposition & Stability · ~September (`v26.9.x`)
 ```
 
 New:
 
 ```text
-### M4 -- Type Safety, Decomposition & Stability (planned)
+### M04 -- Type Safety, Decomposition & Stability (planned)
 ```
 
 - [ ] **Step 7: Update Backlog intro**
@@ -212,9 +212,9 @@ Old (lines 51-55):
 ```text
 **Current milestones:**
 
-- `M1 -- LXC Build & Hardening` -- Sprint 1 (~June 2026, v26.6.x)
-- `M2 -- LXC Release & Stability` -- Sprint 2 (~July 2026, v26.7.x)
-- `M3 -- Data Format & Interop` -- Sprint 3 (~Aug 2026, v26.8.x)
+- `M01 -- LXC Build & Hardening` -- Sprint 1 (~June 2026, v26.6.x)
+- `M02 -- LXC Release & Stability` -- Sprint 2 (~July 2026, v26.7.x)
+- `M03 -- Data Format & Interop` -- Sprint 3 (~Aug 2026, v26.8.x)
 ```
 
 New:
@@ -222,10 +222,10 @@ New:
 ```text
 **Current milestones:**
 
-- `M1 -- LXC Build & Hardening` -- complete
-- `M2 -- LXC Release & Stability` -- in progress
-- `M3 -- Data Format & Interop` -- next
-- `M4 -- Type Safety, Decomposition & Stability` -- planned
+- `M01 -- LXC Build & Hardening` -- complete
+- `M02 -- LXC Release & Stability` -- in progress
+- `M03 -- Data Format & Interop` -- next
+- `M04 -- Type Safety, Decomposition & Stability` -- planned
 ```
 
 - [ ] **Step 2: Add CalVer decoupling note after MICRO rule**

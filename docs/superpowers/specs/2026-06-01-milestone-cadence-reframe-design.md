@@ -37,7 +37,7 @@ Milestone titles become `M{N} -- {Theme}` with no version suffix. Version is det
 
 ## What Stays
 
-- M-numbering for sequence (M1, M2, M3, M4)
+- M-numbering for sequence (M01, M02, M03, M04)
 - CalVer for releases (v26.6.0, v26.8.1, etc.)
 - Thematic naming (descriptive part of milestone titles)
 - Milestone scope (~10-15 issues per milestone)
@@ -46,12 +46,12 @@ Milestone titles become `M{N} -- {Theme}` with no version suffix. Version is det
 
 ## Milestone Title Migration
 
-| Current                                      | Proposed                                     |
-| -------------------------------------------- | -------------------------------------------- |
-| M1 -- LXC Build & Hardening, v26.5.x         | M1 -- LXC Build & Hardening                  |
-| M2 -- LXC Release & Stability, v26.6.x       | M2 -- LXC Release & Stability                |
-| M3 -- Data Format & Interop, v26.7.x         | M3 -- Data Format & Interop                  |
-| M4 -- Type Safety, Decomposition & Stability | M4 -- Type Safety, Decomposition & Stability |
+| Current                                       | Proposed                                      |
+| --------------------------------------------- | --------------------------------------------- |
+| M01 -- LXC Build & Hardening, v26.5.x         | M01 -- LXC Build & Hardening                  |
+| M02 -- LXC Release & Stability, v26.6.x       | M02 -- LXC Release & Stability                |
+| M03 -- Data Format & Interop, v26.7.x         | M03 -- Data Format & Interop                  |
+| M04 -- Type Safety, Decomposition & Stability | M04 -- Type Safety, Decomposition & Stability |
 
 ## Roadmap Diff (Conceptual)
 
@@ -60,13 +60,13 @@ Milestone titles become `M{N} -- {Theme}` with no version suffix. Version is det
 ```markdown
 ## Current Plan -- Next 4 Sprints
 
-### 🟢 M1 -- LXC Build & Hardening · ~June (`v26.6.x`)
+### 🟢 M01 -- LXC Build & Hardening · ~June (`v26.6.x`)
 
-### 🟡 M2 -- LXC Release & Stability · ~July (`v26.7.x`)
+### 🟡 M02 -- LXC Release & Stability · ~July (`v26.7.x`)
 
-### 🔵 M3 -- Data Format & Interop · ~Aug (`v26.8.x`)
+### 🔵 M03 -- Data Format & Interop · ~Aug (`v26.8.x`)
 
-### 🔴 M4 -- Type Safety, Decomposition & Stability · ~September (`v26.9.x`)
+### 🔴 M04 -- Type Safety, Decomposition & Stability · ~September (`v26.9.x`)
 ```
 
 **After:**
@@ -74,13 +74,13 @@ Milestone titles become `M{N} -- {Theme}` with no version suffix. Version is det
 ```markdown
 ## Active Plan
 
-### ✅ M1 -- LXC Build & Hardening (complete)
+### ✅ M01 -- LXC Build & Hardening (complete)
 
-### 🟡 M2 -- LXC Release & Stability (in progress)
+### 🟡 M02 -- LXC Release & Stability (in progress)
 
-### 🔵 M3 -- Data Format & Interop (next)
+### 🔵 M03 -- Data Format & Interop (next)
 
-### 🔴 M4 -- Type Safety, Decomposition & Stability (planned)
+### 🔴 M04 -- Type Safety, Decomposition & Stability (planned)
 ```
 
 ## CLAUDE.md Impact

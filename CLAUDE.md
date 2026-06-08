@@ -54,10 +54,10 @@ from changelog entries. The release workflow will fail if no changelog entry exi
 
 **Current milestones:**
 
-- `M1 -- LXC Build & Hardening` (complete)
-- `M2 -- LXC Release & Stability` (in progress)
-- `M3 -- Data Format & Interop` (next)
-- `M4 -- Type Safety, Decomposition & Stability` (planned)
+- `M01 -- LXC Build & Hardening` (complete)
+- `M02 -- LXC Release & Stability` (in progress)
+- `M03 -- Data Format & Interop` (next)
+- `M04 -- Type Safety, Decomposition & Stability` (planned)
 
 ---
 
@@ -110,7 +110,7 @@ Backlog, Next Up, In Progress, In Review, Done.
 
 ```bash
 # Find next task (issues in active milestone, Next Up status)
-gh issue list --milestone "M2 -- LXC Release & Stability" --state open
+gh issue list --milestone "M02 -- LXC Release & Stability" --state open
 
 # Get issue details
 gh issue view <number>

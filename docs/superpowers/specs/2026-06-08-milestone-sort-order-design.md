@@ -58,8 +58,8 @@ Width: 2 digits (M01-M99). Project will not reach 100 milestones.
 
 ### Step 1: Rename GitHub milestones
 
-Use the GitHub API to rename all 14 milestones. Order: M1 (closed, number 20)
-first, then M2-M13 (open, numbers 21-35).
+Use the GitHub API to rename all 14 milestones. Order: M01 (closed, number 20)
+first, then M02-M13 (open, numbers 21-35).
 
 ```bash
 gh api repos/RackulaLives/Rackula/milestones/{NUMBER} -X PATCH -f title="M{NN} -- {TITLE}"
@@ -87,7 +87,7 @@ reference milestone numbers.
 
 ### Step 4: Update CLAUDE.md
 
-CLAUDE.md references M1-M4 in the Versioning Policy section. Update to M01-M04.
+CLAUDE.md references M01-M04 in the Versioning Policy section. Update to M01-M04.
 
 ### Step 5: Verify
 
