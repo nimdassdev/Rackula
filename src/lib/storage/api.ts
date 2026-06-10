@@ -3,17 +3,34 @@
  * Communicates with the API sidecar for layout CRUD
  * Uses UUID-based routing for stable URLs across renames
  */
-import { API_BASE_URL } from "./persistence-config";
-import { isApiAvailable } from "$lib/stores/persistence.svelte";
+import { isApiAvailable } from "./availability.svelte";
 import type { Layout } from "$lib/types";
-import { serializeLayoutToYaml, parseLayoutYaml } from "./yaml";
-import { persistenceDebug } from "./debug";
+import { serializeLayoutToYaml, parseLayoutYaml } from "$lib/utils/yaml";
+import { persistenceDebug } from "$lib/utils/debug";
 import { z } from "zod";
 
 const log = persistenceDebug.api;
 
+/**
+ * API base URL for persistence endpoints
+ * Defaults to /api (proxied by nginx in Docker)
+ * Normalized: empty or unset falls back to /api, trailing slashes stripped,
+ * relative values get a leading slash so health and CRUD resolve identically
+ */
+function normalizeApiBaseUrl(raw: string | undefined): string {
+  const trimmed = (raw ?? "").trim().replace(/\/+$/, "");
+  if (trimmed === "") return "/api";
+  if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith("/")) return trimmed;
+  return `/${trimmed}`;
+}
+
+const API_BASE_URL: string = normalizeApiBaseUrl(import.meta.env.VITE_API_URL);
+
 /** Default timeout for API requests (10 seconds) */
 const API_TIMEOUT_MS = 10_000;
+
+/** Health check timeout, shorter so availability probes fail fast (3 seconds) */
+const HEALTH_CHECK_TIMEOUT_MS = 3_000;
 
 /**
  * Zod schema for SavedLayoutItem
@@ -66,18 +83,18 @@ async function safeParseErrorJson(
   response: Response,
 ): Promise<{ error: string }> {
   try {
-    const data = await response.json();
-    if (data && typeof data === "object" && "error" in data) {
-      return data as { error: string };
-    }
-    return { error: response.statusText || "Unknown error" };
-  } catch {
+    const text = await response.text();
     try {
-      const text = await response.text();
-      return { error: text || response.statusText || "Unknown error" };
+      const data: unknown = JSON.parse(text);
+      if (data && typeof data === "object" && "error" in data) {
+        return data as { error: string };
+      }
     } catch {
-      return { error: response.statusText || "Unknown error" };
+      // fall through to raw text
     }
+    return { error: text || response.statusText || "Unknown error" };
+  } catch {
+    return { error: response.statusText || "Unknown error" };
   }
 }
 
@@ -115,17 +132,15 @@ export class PersistenceError extends Error {
  * so it does not check isApiAvailable() first.
  */
 export async function checkApiHealth(): Promise<boolean> {
-  // Build health URL from API_BASE_URL
-  // Handle both relative (/api) and absolute URLs
-  const baseUrl = new URL(API_BASE_URL, window.location.origin);
-  const basePath = baseUrl.pathname.replace(/\/$/, "");
-  const healthUrl = new URL(`${basePath}/health`, baseUrl.origin).toString();
+  // API_BASE_URL is normalized (leading slash or absolute, no trailing
+  // slash), so health and CRUD endpoints share identical path rules
+  const healthUrl = `${API_BASE_URL}/health`;
   log("checkApiHealth: checking %s", healthUrl);
 
   try {
     const response = await fetch(healthUrl, {
       method: "GET",
-      signal: AbortSignal.timeout(3000),
+      signal: AbortSignal.timeout(HEALTH_CHECK_TIMEOUT_MS),
     });
     if (!response.ok) {
       log(
@@ -254,7 +269,7 @@ export async function loadSavedLayout(uuid: string): Promise<Layout> {
     return parseLayoutYaml(yamlContent);
   } catch (error) {
     log("loadSavedLayout: failed to parse uuid=%s %O", uuid, error);
-    throw new PersistenceError("Layout data is corrupted — could not parse");
+    throw new PersistenceError("Layout data is corrupted - could not parse");
   }
 }
 
@@ -364,71 +379,4 @@ export async function deleteSavedLayout(uuid: string): Promise<void> {
   }
 
   log("deleteSavedLayout: deleted uuid=%s", uuid);
-}
-
-/**
- * Upload an asset image
- * @param layoutUuid - The layout's UUID
- */
-export async function uploadAsset(
-  layoutUuid: string,
-  deviceSlug: string,
-  face: "front" | "rear",
-  blob: Blob,
-): Promise<void> {
-  log(
-    "uploadAsset: layoutUuid=%s deviceSlug=%s face=%s size=%d type=%s",
-    layoutUuid,
-    deviceSlug,
-    face,
-    blob.size,
-    blob.type,
-  );
-
-  if (!isApiAvailable()) {
-    log("uploadAsset: API not available");
-    throw new PersistenceError("API not available");
-  }
-
-  const url = `${API_BASE_URL}/assets/${encodeURIComponent(layoutUuid)}/${encodeURIComponent(deviceSlug)}/${face}`;
-  log("uploadAsset: PUT %s", url);
-
-  const response = await fetch(url, {
-    method: "PUT",
-    headers: { "Content-Type": blob.type },
-    body: blob,
-    signal: AbortSignal.timeout(API_TIMEOUT_MS),
-  });
-
-  if (!response.ok) {
-    const error = await safeParseErrorJson(response);
-    log(
-      "uploadAsset: error status=%d message=%s",
-      response.status,
-      error.error,
-    );
-    throw new PersistenceError(
-      error.error ?? "Failed to upload asset",
-      response.status,
-    );
-  }
-
-  log(
-    "uploadAsset: uploaded layoutUuid=%s deviceSlug=%s face=%s",
-    layoutUuid,
-    deviceSlug,
-    face,
-  );
-}
-
-/**
- * Get asset URL for display
- * @param layoutUuid - The layout's UUID
- */
-export function getAssetUrl(
-  layoutUuid: string,
-  deviceSlug: string,
-  face: "front" | "rear",
-): string {
-  return `${API_BASE_URL}/assets/${encodeURIComponent(layoutUuid)}/${encodeURIComponent(deviceSlug)}/${face}`;
 }

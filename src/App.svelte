@@ -33,7 +33,21 @@
     loadSessionWithTimestamp,
     clearSession,
     isServerNewer,
-  } from "$lib/utils/session-storage";
+    setApiAvailable,
+    initializePersistence,
+    hasEverConnectedToApi,
+    listSavedLayouts,
+    loadSavedLayout,
+    handleLoad,
+  } from "$lib/storage";
+  import {
+    maybeSave,
+    maybeSaveAs,
+    maybeExport,
+    prepareExportQrCode,
+    handleShare,
+    handleFitAll,
+  } from "$lib/utils/app-actions";
   import { getLayoutStore } from "$lib/stores/layout.svelte";
   import { getSelectionStore } from "$lib/stores/selection.svelte";
   import { getUIStore } from "$lib/stores/ui.svelte";
@@ -44,27 +58,8 @@
   import { createKonamiDetector } from "$lib/utils/konami";
   import { persistenceDebug } from "$lib/utils/debug";
   import { dialogStore } from "$lib/stores/dialogs.svelte";
-  import { generateShareUrl } from "$lib/utils/share";
-  import { generateQRCode, canFitInQR } from "$lib/utils/qrcode";
   import { DRAWER_WIDTH } from "$lib/constants/layout";
   import { Tooltip } from "bits-ui";
-  import {
-    setApiAvailable,
-    initializePersistence,
-    hasEverConnectedToApi,
-  } from "$lib/stores/persistence.svelte";
-  import {
-    listSavedLayouts,
-    loadSavedLayout,
-  } from "$lib/utils/persistence-api";
-  import {
-    maybeSave,
-    maybeSaveAs,
-    maybeExport,
-    handleLoad,
-    handleShare,
-    handleFitAll,
-  } from "$lib/utils/persistence-manager.svelte";
   import { debounce } from "$lib/utils/debounce";
 
   // Sidebar size configuration (in pixels)
@@ -88,7 +83,8 @@
   const viewportStore = getViewportStore();
   const placementStore = getPlacementStore();
 
-  // Persistence state — delegated to persistence-manager module
+  // Persistence state lives in $lib/storage (manager.svelte.ts); app-level
+  // actions (save/export/share orchestration) live in $lib/utils/app-actions.
 
   // Sidebar width: read once from the UI store.
   // This is intentionally NOT reactive because changes to sidebarWidth are driven
@@ -508,18 +504,7 @@
       return;
     }
 
-    try {
-      const shareUrl = generateShareUrl(layoutStore.layout);
-      if (canFitInQR(shareUrl)) {
-        dialogStore.exportQrCodeDataUrl = await generateQRCode(shareUrl, {
-          width: 444,
-        });
-      } else {
-        dialogStore.exportQrCodeDataUrl = undefined;
-      }
-    } catch {
-      dialogStore.exportQrCodeDataUrl = undefined;
-    }
+    await prepareExportQrCode();
 
     dialogStore.exportSelectedRackIds = rackIds;
     dialogStore.open("export");

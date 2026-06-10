@@ -1,9 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { checkApiHealth } from "$lib/utils/persistence-api";
+import { checkApiHealth } from "$lib/storage/api";
 
 describe("checkApiHealth", () => {
   function stubBrowserGlobals(): void {
-    vi.stubGlobal("window", { location: { origin: "https://example.com" } });
     vi.stubGlobal("AbortSignal", {
       timeout: () => new AbortController().signal,
     });
@@ -36,7 +35,7 @@ describe("checkApiHealth", () => {
     const healthy = await checkApiHealth();
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0]?.[0]).toBe("https://example.com/api/health");
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/health");
     expect(healthy).toBe(true);
   });
 

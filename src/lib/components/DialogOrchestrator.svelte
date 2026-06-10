@@ -38,21 +38,22 @@
   import { dialogStore } from "$lib/stores/dialogs.svelte";
 
   import {
+    handleLoad,
+    handleSaveToServer,
+    handleSaveAsArchive,
+    shouldSaveToServer,
+    clearSession,
+  } from "$lib/storage";
+  import {
     maybeSave,
     maybeSaveAs,
     maybeExport,
-    handleLoad,
     handleExport,
     handleExportSubmit,
     handleShare,
-    handleSaveToServer,
-    handleSaveAsArchive,
     handleFitAll,
     resetAndOpenNewRack,
-    shouldSaveToServer,
-  } from "$lib/utils/persistence-manager.svelte";
-
-  import { clearSession } from "$lib/utils/session-storage";
+  } from "$lib/utils/app-actions";
   import { parseDeviceLibraryImport } from "$lib/utils/import";
   import { hapticTap } from "$lib/utils/haptics";
   import { appDebug, dialogDebug } from "$lib/utils/debug";
@@ -136,11 +137,11 @@
 
   async function handleSaveFirst() {
     dialogStore.close();
-    dialogStore.pendingSaveFirst = true;
-    if (shouldSaveToServer()) {
-      await handleSaveToServer(true);
-    } else {
-      await handleSaveAsArchive();
+    const saved = shouldSaveToServer()
+      ? await handleSaveToServer(true)
+      : await handleSaveAsArchive();
+    if (saved) {
+      resetAndOpenNewRack();
     }
   }
 
