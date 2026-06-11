@@ -35,6 +35,28 @@ let _errorToastId: string | undefined = undefined;
 let serverSaveTimer: ReturnType<typeof setTimeout> | null = null;
 let saveDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
+// After a durable save the pending session debounce must be cancelled, or it
+// resurrects the cleared session copy and triggers a false unload warning
+function cancelSessionSave(): void {
+  if (saveDebounceTimer) {
+    clearTimeout(saveDebounceTimer);
+    saveDebounceTimer = null;
+    _sessionSavePending = false;
+  }
+}
+
+// Reactive mirrors of the timers, for the beforeunload risk condition
+let _sessionSavePending = $state(false);
+let _serverSavePending = $state(false);
+
+export function isSessionSavePending(): boolean {
+  return _sessionSavePending;
+}
+
+export function isServerSavePending(): boolean {
+  return _serverSavePending || _saveStatus === "saving";
+}
+
 export function getConsecutiveSaveFailures(): number {
   return _consecutiveSaveFailures;
 }
@@ -132,6 +154,7 @@ export async function handleSaveToServer(isManual = false): Promise<boolean> {
     if (serverSaveTimer) {
       clearTimeout(serverSaveTimer);
       serverSaveTimer = null;
+      _serverSavePending = false;
     }
     const snapshot = structuredClone($state.snapshot(layoutStore.layout));
     await saveLayoutToServer(snapshot);
@@ -143,6 +166,7 @@ export async function handleSaveToServer(isManual = false): Promise<boolean> {
       _errorToastId = undefined;
     }
     layoutStore.markClean();
+    cancelSessionSave();
     clearSession();
     if (isManual) {
       toastStore.showToast("Layout saved", "success", 3000);
@@ -162,6 +186,7 @@ export async function handleSaveAsArchive(): Promise<boolean> {
   try {
     const filename = await downloadYamlFile(layoutStore.layout);
     layoutStore.markClean();
+    cancelSessionSave();
     clearSession();
     toastStore.showToast(`Saved ${filename}`, "success", 3000);
     return true;
@@ -193,8 +218,7 @@ export async function handleLoad(): Promise<void> {
 export function flushSessionSave(): void {
   const layoutStore = getLayoutStore();
   if (saveDebounceTimer && layoutStore.hasRack) {
-    clearTimeout(saveDebounceTimer);
-    saveDebounceTimer = null;
+    cancelSessionSave();
     saveSession(layoutStore.layout);
   }
 }
@@ -213,27 +237,21 @@ export function initPersistenceEffects(): void {
       if (saveDebounceTimer) {
         clearTimeout(saveDebounceTimer);
       }
+      _sessionSavePending = true;
       saveDebounceTimer = setTimeout(() => {
         saveSession(currentLayout);
         saveDebounceTimer = null;
+        _sessionSavePending = false;
       }, 1000);
     } else {
-      if (saveDebounceTimer) {
-        clearTimeout(saveDebounceTimer);
-        saveDebounceTimer = null;
-      }
+      cancelSessionSave();
       // Only clear session if we previously had a rack — prevents wiping
       // localStorage before App.onMount restores the session on page load
       if (hasEverHadRack) {
         clearSession();
       }
     }
-    return () => {
-      if (saveDebounceTimer) {
-        clearTimeout(saveDebounceTimer);
-        saveDebounceTimer = null;
-      }
-    };
+    return cancelSessionSave;
   });
 
   // Effect 2: Auto-save to server when API is available
@@ -248,7 +266,13 @@ export function initPersistenceEffects(): void {
       clearTimeout(serverSaveTimer);
     }
     const snapshot = structuredClone($state.snapshot(layout));
+    _serverSavePending = true;
     serverSaveTimer = setTimeout(async () => {
+      // Clear pending state before the await: a stale continuation must not
+      // clobber a newer scheduled save. The synchronous "saving" status keeps
+      // isServerSavePending() true for the in-flight phase.
+      serverSaveTimer = null;
+      _serverSavePending = false;
       _saveStatus = "saving";
       try {
         await saveLayoutToServer(snapshot);
@@ -263,12 +287,12 @@ export function initPersistenceEffects(): void {
         persistenceDebug.api("Auto-save failed: %O", e);
         handlePersistenceError(e);
       }
-      serverSaveTimer = null;
     }, 2000);
     return () => {
       if (serverSaveTimer) {
         clearTimeout(serverSaveTimer);
         serverSaveTimer = null;
+        _serverSavePending = false;
       }
     };
   });
@@ -313,4 +337,6 @@ export function resetPersistenceManager(): void {
     clearTimeout(saveDebounceTimer);
     saveDebounceTimer = null;
   }
+  _serverSavePending = false;
+  _sessionSavePending = false;
 }
