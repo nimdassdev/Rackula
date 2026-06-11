@@ -97,8 +97,7 @@ async function postSnapshot(
 async function snapshotFilesOnDisk(uuid: string): Promise<string[]> {
   const entries = await readdir(testDir, { withFileTypes: true });
   const folder = entries.find(
-    (entry) =>
-      entry.isDirectory() && entry.name.toLowerCase().endsWith(uuid),
+    (entry) => entry.isDirectory() && entry.name.toLowerCase().endsWith(uuid),
   );
   if (!folder) {
     return [];
@@ -114,8 +113,7 @@ async function snapshotFilesOnDisk(uuid: string): Promise<string[]> {
 async function readSnapshotContents(uuid: string): Promise<string[]> {
   const entries = await readdir(testDir, { withFileTypes: true });
   const folder = entries.find(
-    (entry) =>
-      entry.isDirectory() && entry.name.toLowerCase().endsWith(uuid),
+    (entry) => entry.isDirectory() && entry.name.toLowerCase().endsWith(uuid),
   );
   if (!folder) {
     return [];
@@ -347,9 +345,9 @@ describe("GET /layouts/:uuid/snapshots", () => {
       );
       expect(snapshot.size).toBeGreaterThan(0);
     }
-    expect(
-      body.snapshots[0].timestamp >= body.snapshots[1].timestamp,
-    ).toBe(true);
+    expect(body.snapshots[0].timestamp >= body.snapshots[1].timestamp).toBe(
+      true,
+    );
   });
 
   it("returns an empty list when the layout has no snapshots", async () => {

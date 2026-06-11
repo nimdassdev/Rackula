@@ -32,6 +32,8 @@ export {
   shouldSaveToServer,
   initPersistenceEffects,
   flushSessionSave,
+  getStorageChipState,
+  type SaveStatus,
   isSessionSavePending,
   isServerSavePending,
 } from "./manager.svelte";
