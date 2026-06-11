@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * NetBox Device Import Utilities
  * Parses NetBox devicetype-library YAML format and converts to Rackula DeviceType
@@ -442,7 +441,10 @@ export function convertToDeviceType(
       name: o.name,
       type: o.type,
       power_port: o.power_port,
-      feed_leg: o.feed_leg as DeviceType["power_outlets"][0]["feed_leg"],
+      feed_leg:
+        o.feed_leg === "A" || o.feed_leg === "B" || o.feed_leg === "C"
+          ? o.feed_leg
+          : undefined,
     }));
   }
 
