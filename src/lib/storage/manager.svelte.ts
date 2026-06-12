@@ -34,6 +34,12 @@ let _errorToastId: string | undefined = undefined;
 let serverSaveTimer: ReturnType<typeof setTimeout> | null = null;
 let saveDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
+// Bumped on every auto-save effect run. A debounced save captures the id at
+// schedule time; if a newer run bumps it while the save is in flight, the live
+// layout has edits this save did not persist, so its success must not clear the
+// dirty/session state for those newer edits.
+let _serverSaveScheduleId = 0;
+
 // After a durable save the pending session debounce must be cancelled, or it
 // resurrects the cleared session copy and triggers a false unload warning
 function cancelSessionSave(): void {
@@ -80,6 +86,40 @@ export function getStorageChipState() {
       return layoutStore.hasEverExported;
     },
   };
+}
+
+/**
+ * Shared success epilogue for a durable server save, called by both the manual
+ * (handleSaveToServer) and debounced auto-save paths so a successful auto-save
+ * leaves the layout in the same state as a manual one.
+ *
+ * Always (server is healthy): resets the consecutive-failure counter, marks the
+ * API available, and dismisses any lingering error toast.
+ *
+ * When clearDirtyState is true (the default): also sets status to "saved", marks
+ * the layout clean, cancels the pending session debounce, and clears the session
+ * copy.
+ *
+ * @param clearDirtyState Pass false for a stale debounced save whose captured
+ *   snapshot is older than the live layout (newer unsaved edits arrived while the
+ *   save was in flight). The dirty flag and session state are then preserved for
+ *   the follow-up save so unload warnings and recovery data survive.
+ */
+export function finalizeSuccessfulSave(clearDirtyState = true): void {
+  const layoutStore = getLayoutStore();
+  const toastStore = getToastStore();
+  _consecutiveSaveFailures = 0;
+  setApiAvailable(true);
+  if (_errorToastId) {
+    toastStore.dismissToast(_errorToastId);
+    _errorToastId = undefined;
+  }
+  if (clearDirtyState) {
+    _saveStatus = "saved";
+    layoutStore.markClean();
+    cancelSessionSave();
+    clearSession();
+  }
 }
 
 function handleSaveFailure(
@@ -179,16 +219,7 @@ export async function handleSaveToServer(isManual = false): Promise<boolean> {
     }
     const snapshot = structuredClone($state.snapshot(layoutStore.layout));
     await saveLayoutToServer(snapshot);
-    _consecutiveSaveFailures = 0;
-    setApiAvailable(true);
-    _saveStatus = "saved";
-    if (_errorToastId) {
-      toastStore.dismissToast(_errorToastId);
-      _errorToastId = undefined;
-    }
-    layoutStore.markClean();
-    cancelSessionSave();
-    clearSession();
+    finalizeSuccessfulSave();
     if (isManual) {
       toastStore.showToast("Layout saved", "success", 3000);
     }
@@ -284,6 +315,9 @@ export function initPersistenceEffects(): void {
 
   // Effect 2: Auto-save to server when API is available
   $effect(() => {
+    // Capture this run's schedule id; a later run (e.g. an edit during the
+    // in-flight save) bumps it and marks an earlier save's success stale.
+    const scheduleId = ++_serverSaveScheduleId;
     if (!isApiAvailable()) return;
     if (_consecutiveSaveFailures >= MAX_SAVE_FAILURES) return;
     const layout = layoutStore.layout;
@@ -304,13 +338,9 @@ export function initPersistenceEffects(): void {
       _saveStatus = "saving";
       try {
         await saveLayoutToServer(snapshot);
-        _consecutiveSaveFailures = 0;
-        _saveStatus = "saved";
-        if (_errorToastId) {
-          getToastStore().dismissToast(_errorToastId);
-          _errorToastId = undefined;
-        }
-        clearSession();
+        // Only clear dirty/session state if no newer save was scheduled while
+        // this one was in flight; otherwise newer unsaved edits exist.
+        finalizeSuccessfulSave(scheduleId === _serverSaveScheduleId);
       } catch (e) {
         persistenceDebug.api("Auto-save failed: %O", e);
         handlePersistenceError(e);
