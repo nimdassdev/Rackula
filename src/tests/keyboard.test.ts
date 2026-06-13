@@ -14,7 +14,10 @@ import {
 import { getUIStore, resetUIStore } from "$lib/stores/ui.svelte";
 import { CATEGORY_COLOURS } from "$lib/types/constants";
 import { UNITS_PER_U, toInternalUnits } from "$lib/utils/position";
-import { setupStoreWithRack } from "./factories";
+import {
+  setupStoreWithRack,
+  createBladeContainerWithChild,
+} from "./factories";
 
 describe("Keyboard Utilities", () => {
   describe("shouldIgnoreKeyboard", () => {
@@ -778,6 +781,113 @@ describe("KeyboardHandler Component", () => {
       expect(layoutStore.rack!.devices[0]!.position).toBe(
         initialPosition + toInternalUnits(1 / 3),
       );
+    });
+  });
+
+  describe("Contained Device Movement Guard", () => {
+    it("ArrowUp does not move a contained child device", async () => {
+      const layoutStore = getLayoutStore();
+      const selectionStore = getSelectionStore();
+
+      const { rackId, containerId, childId, childPosition } =
+        createBladeContainerWithChild();
+
+      // Select the contained child
+      selectionStore.selectDevice(rackId, childId);
+
+      render(KeyboardHandler);
+
+      await fireEvent.keyDown(window, { key: "ArrowUp" });
+
+      // Child should NOT have moved (container-relative position unchanged)
+      const childAfter = layoutStore.rack!.devices.find(
+        (d) => d.id === childId,
+      )!;
+      expect(childAfter.position).toBe(childPosition);
+      // Child should still be contained (not ejected)
+      expect(childAfter.container_id).toBe(containerId);
+    });
+
+    it("ArrowDown does not move a contained child device", async () => {
+      const layoutStore = getLayoutStore();
+      const selectionStore = getSelectionStore();
+
+      const { rackId, containerId, childId, childPosition } =
+        createBladeContainerWithChild();
+
+      selectionStore.selectDevice(rackId, childId);
+
+      render(KeyboardHandler);
+
+      await fireEvent.keyDown(window, { key: "ArrowDown" });
+
+      const childAfter = layoutStore.rack!.devices.find(
+        (d) => d.id === childId,
+      )!;
+      expect(childAfter.position).toBe(childPosition);
+      expect(childAfter.container_id).toBe(containerId);
+    });
+
+    it("Shift+ArrowUp does not move a contained child device", async () => {
+      const layoutStore = getLayoutStore();
+      const selectionStore = getSelectionStore();
+
+      const { rackId, containerId, childId, childPosition } =
+        createBladeContainerWithChild();
+
+      selectionStore.selectDevice(rackId, childId);
+
+      render(KeyboardHandler);
+
+      await fireEvent.keyDown(window, { key: "ArrowUp", shiftKey: true });
+
+      const childAfter = layoutStore.rack!.devices.find(
+        (d) => d.id === childId,
+      )!;
+      expect(childAfter.position).toBe(childPosition);
+      expect(childAfter.container_id).toBe(containerId);
+    });
+
+    it("ArrowRight does not move a contained child device between slots", async () => {
+      const layoutStore = getLayoutStore();
+      const selectionStore = getSelectionStore();
+
+      const { rackId, containerId, childId, childPosition } =
+        createBladeContainerWithChild();
+
+      selectionStore.selectDevice(rackId, childId);
+
+      render(KeyboardHandler);
+
+      await fireEvent.keyDown(window, { key: "ArrowRight" });
+
+      const childAfter = layoutStore.rack!.devices.find(
+        (d) => d.id === childId,
+      )!;
+      expect(childAfter.slot_id).toBe("slot-left");
+      expect(childAfter.position).toBe(childPosition);
+      expect(childAfter.container_id).toBe(containerId);
+    });
+
+    it("ArrowLeft does not move a contained child device between slots", async () => {
+      const layoutStore = getLayoutStore();
+      const selectionStore = getSelectionStore();
+
+      const { rackId, containerId, childId, childPosition } =
+        createBladeContainerWithChild();
+
+      selectionStore.selectDevice(rackId, childId);
+
+      render(KeyboardHandler);
+
+      await fireEvent.keyDown(window, { key: "ArrowLeft" });
+
+      const childAfter = layoutStore.rack!.devices.find(
+        (d) => d.id === childId,
+      )!;
+      expect(childAfter.slot_id).toBe("slot-left");
+      expect(childAfter.position).toBe(childPosition);
+      expect(childAfter.container_id).toBe(containerId);
     });
   });
 
