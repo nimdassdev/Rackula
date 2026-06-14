@@ -17,7 +17,6 @@
   import LayoutYamlPanel from "$lib/components/LayoutYamlPanel.svelte";
   import Dialog from "$lib/components/Dialog.svelte";
   import HelpPanel from "$lib/components/HelpPanel.svelte";
-  import BottomSheet from "$lib/components/BottomSheet.svelte";
   import DeviceDetails from "$lib/components/DeviceDetails.svelte";
   import MobileFileSheet from "$lib/components/MobileFileSheet.svelte";
   import MobileBottomNav from "$lib/components/mobile/MobileBottomNav.svelte";
@@ -611,9 +610,10 @@
     {@const maxPosition = rackHeight - deviceType.u_height + 1}
     {@const canMoveUp = device.position < maxPosition}
     {@const canMoveDown = device.position > 1}
-    <BottomSheet
+    <Dialog
       open={bottomSheetOpen}
-      title={deviceType.model}
+      title={deviceType.model ?? "Device"}
+      size="M"
       onclose={handleBottomSheetClose}
     >
       <DeviceDetails
@@ -628,7 +628,7 @@
         {canMoveUp}
         {canMoveDown}
       />
-    </BottomSheet>
+    </Dialog>
   {/if}
 {/if}
 
@@ -706,7 +706,7 @@
 <Dialog
   open={yamlEditorDialogOpen}
   title="Layout YAML"
-  width="min(980px, 95vw)"
+  size="L"
   onclose={handleYamlEditorClose}
 >
   <LayoutYamlPanel
@@ -738,7 +738,12 @@
 />
 
 {#if viewportStore.isMobile && fileSheetOpen}
-  <BottomSheet open={fileSheetOpen} title="File" onclose={handleFileSheetClose}>
+  <Dialog
+    open={fileSheetOpen}
+    title="File"
+    size="M"
+    onclose={handleFileSheetClose}
+  >
     <MobileFileSheet
       onload={handleLoad}
       onsave={maybeSave}
@@ -749,13 +754,14 @@
       onclose={handleFileSheetClose}
       hasRacks={layoutStore.hasRack}
     />
-  </BottomSheet>
+  </Dialog>
 {/if}
 
 {#if viewportStore.isMobile && yamlEditorSheetOpen}
-  <BottomSheet
+  <Dialog
     open={yamlEditorSheetOpen}
     title="Layout YAML"
+    size="L"
     onclose={handleYamlEditorSheetClose}
   >
     <LayoutYamlPanel
@@ -763,11 +769,16 @@
       layout={layoutStore.layout}
       onapply={handleYamlApply}
     />
-  </BottomSheet>
+  </Dialog>
 {/if}
 
 {#if viewportStore.isMobile && viewSheetOpen}
-  <BottomSheet open={viewSheetOpen} title="View" onclose={handleViewSheetClose}>
+  <Dialog
+    open={viewSheetOpen}
+    title="View"
+    size="M"
+    onclose={handleViewSheetClose}
+  >
     <MobileViewSheet
       displayMode={uiStore.displayMode}
       showAnnotations={uiStore.showAnnotations}
@@ -779,34 +790,36 @@
       onresetzoom={() => canvasStore.resetZoom()}
       onclose={handleViewSheetActionClose}
     />
-  </BottomSheet>
+  </Dialog>
 {/if}
 
 {#if viewportStore.isMobile && deviceLibrarySheetOpen}
-  <BottomSheet
+  <Dialog
     open={deviceLibrarySheetOpen}
     title="Device Library"
+    size="M"
     onclose={handleDeviceLibrarySheetClose}
   >
     <DevicePalette
       ondeviceselect={handleMobileDeviceSelect}
       oncreatedevice={handleAddDevice}
     />
-  </BottomSheet>
+  </Dialog>
 {/if}
 
 <!-- Mobile rack edit sheet (opened via long press on rack) -->
 {#if viewportStore.isMobile && rackEditSheetOpen && layoutStore.activeRack}
-  <BottomSheet
+  <Dialog
     open={rackEditSheetOpen}
     title="Edit Rack"
+    size="M"
     onclose={handleRackEditSheetClose}
   >
     <RackEditSheet
       rack={layoutStore.activeRack}
       onclose={handleRackEditSheetClose}
     />
-  </BottomSheet>
+  </Dialog>
 {/if}
 
 <!-- Hidden file input for device library JSON import -->
