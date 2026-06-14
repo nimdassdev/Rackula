@@ -46,10 +46,23 @@
     maybeSave,
     maybeSaveAs,
     maybeExport,
-    prepareExportQrCode,
     handleShare,
     handleFitAll,
   } from "$lib/utils/app-actions";
+  import {
+    handleNewRack,
+    handleDelete,
+    handleHelp,
+    handleAddDevice,
+    handleImportFromNetBox,
+    handleOpenYamlEditor,
+  } from "$lib/utils/dialog-actions";
+  import {
+    handleRackContextDuplicate,
+    handleRackContextDelete,
+    handleRackContextExport,
+    handleRackContextFocus,
+  } from "$lib/utils/rack-actions";
   import { getLayoutStore } from "$lib/stores/layout.svelte";
   import { getSelectionStore } from "$lib/stores/selection.svelte";
   import { getUIStore } from "$lib/stores/ui.svelte";
@@ -66,7 +79,6 @@
   import { VERSION } from "$lib/version";
   import { persistenceDebug } from "$lib/utils/debug";
   import { dialogStore } from "$lib/stores/dialogs.svelte";
-  import { DRAWER_WIDTH } from "$lib/constants/layout";
   import { Tooltip } from "bits-ui";
   import { debounce } from "$lib/utils/debounce";
   import { safeGetItem, safeSetItem } from "$lib/utils/safe-storage";
@@ -495,45 +507,6 @@
   // --- Thin wrappers for Toolbar/Canvas/KeyboardHandler callbacks ---
   // These delegate to dialogStore; the actual dialog logic lives in DialogOrchestrator.
 
-  function handleNewRack() {
-    if (!layoutStore.canAddRack) {
-      toastStore.showToast("Maximum number of racks reached", "warning");
-      return;
-    }
-    dialogStore.open("newRack");
-  }
-
-  function handleDelete() {
-    if (selectionStore.isRackSelected && selectionStore.selectedRackId) {
-      const rack = layoutStore.getRackById(selectionStore.selectedRackId);
-      if (rack) {
-        dialogStore.deleteTarget = { type: "rack", name: rack.name };
-        dialogStore.open("confirmDelete");
-      }
-    } else if (selectionStore.isDeviceSelected) {
-      if (
-        selectionStore.selectedRackId !== null &&
-        selectionStore.selectedDeviceId !== null
-      ) {
-        const rack = layoutStore.getRackById(selectionStore.selectedRackId);
-        const deviceIndex = selectionStore.getSelectedDeviceIndex(
-          rack?.devices ?? [],
-        );
-        if (rack && deviceIndex !== null && rack.devices[deviceIndex]) {
-          const device = rack.devices[deviceIndex];
-          const deviceDef = layoutStore.device_types.find(
-            (d) => d.slug === device?.device_type,
-          );
-          dialogStore.deleteTarget = {
-            type: "device",
-            name: deviceDef?.model ?? deviceDef?.slug ?? "Device",
-          };
-          dialogStore.open("confirmDelete");
-        }
-      }
-    }
-  }
-
   function handleToggleTheme() {
     uiStore.toggleTheme();
   }
@@ -548,31 +521,10 @@
     uiStore.toggleAnnotations();
   }
 
-  function handleHelp() {
-    dialogStore.open("help");
-  }
-
-  function handleAddDevice() {
-    dialogStore.closeSheet();
-    dialogStore.open("addDevice");
-  }
-
-  function handleImportFromNetBox() {
-    dialogStore.open("importNetBox");
-  }
-
   function handleImportDevices() {
     // Delegates to DialogOrchestrator's hidden file input via dialogStore
     // The DialogOrchestrator handles the actual file input click
     dialogOrchestrator.handleImportDevices();
-  }
-
-  function handleOpenYamlEditor() {
-    if (viewportStore.isMobile) {
-      dialogStore.openSheet("yamlEditor");
-      return;
-    }
-    dialogStore.open("yamlEditor");
   }
 
   function handleOpenCleanupDialog() {
@@ -600,49 +552,6 @@
 
   function handleRackContextRename(rackId: string) {
     handleRackContextEdit(rackId);
-  }
-
-  function handleRackContextDuplicate(rackId: string) {
-    const result = layoutStore.duplicateRack(rackId);
-    if (result.error) {
-      toastStore.showToast(result.error, "error");
-    } else {
-      toastStore.showToast("Rack duplicated", "success");
-      handleFitAll();
-    }
-  }
-
-  function handleRackContextDelete(rackId: string) {
-    const rack = layoutStore.getRackById(rackId);
-    if (rack) {
-      layoutStore.setActiveRack(rackId);
-      selectionStore.selectRack(rackId);
-      dialogStore.deleteTarget = { type: "rack", name: rack.name };
-      dialogStore.open("confirmDelete");
-    }
-  }
-
-  async function handleRackContextExport(rackIds: string[]) {
-    if (rackIds.length === 0) {
-      toastStore.showToast("No rack to export", "warning");
-      return;
-    }
-
-    await prepareExportQrCode();
-
-    dialogStore.exportSelectedRackIds = rackIds;
-    dialogStore.open("export");
-  }
-
-  function handleRackContextFocus(rackIds: string[]) {
-    if (rackIds.length === 0) return;
-    const rightOffset = uiStore.rightDrawerOpen ? DRAWER_WIDTH : 0;
-    canvasStore.focusRack(
-      rackIds,
-      layoutStore.racks,
-      layoutStore.rack_groups,
-      rightOffset,
-    );
   }
 
   // DialogOrchestrator component reference for delegating calls
