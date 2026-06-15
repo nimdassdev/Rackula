@@ -14,6 +14,8 @@
     getStorageMode,
     shouldWarnBeforeUnload,
     persistBrowserWorkspace,
+    getTwinTabGuard,
+    setForeignWriteNotifier,
     type PersistTab,
   } from "$lib/storage";
   import { getImageStore } from "$lib/stores/images.svelte";
@@ -21,6 +23,7 @@
   import { getUIStore } from "$lib/stores/ui.svelte";
   import { getLayoutStore } from "$lib/stores/layout.svelte";
   import { getWorkspaceStore } from "$lib/stores/workspace.svelte";
+  import { getToastStore } from "$lib/stores/toast.svelte";
   import { setupKeyboardViewportAdaptation } from "$lib/utils/keyboard-viewport";
 
   const imageStore = getImageStore();
@@ -28,6 +31,37 @@
   const uiStore = getUIStore();
   const layoutStore = getLayoutStore();
   const workspaceStore = getWorkspaceStore();
+  const toastStore = getToastStore();
+
+  // Twin-tab guard (#2044): one shared instance for this page. The persist path
+  // skips paused layouts; a foreign write to a layout body pauses that layout
+  // and raises an "Open in another tab" toast offering a Reload.
+  const twinTabGuard = getTwinTabGuard();
+  let foreignWriteToastId: string | undefined;
+  setForeignWriteNotifier(() => {
+    // One toast for the page: any paused layout is recovered by the same Reload.
+    // A spurious signal leaves the tab paused until that manual Reload by design.
+    // Suppress only while the previous toast is still on screen; once the user
+    // dismisses it without reloading, a later foreign write must re-raise it
+    // (the tab stays paused, so the Reload prompt has to come back).
+    if (
+      foreignWriteToastId &&
+      toastStore.toasts.some((toast) => toast.id === foreignWriteToastId)
+    ) {
+      return;
+    }
+    foreignWriteToastId = toastStore.showToast(
+      "This layout is open in another tab. Edits here are paused to avoid overwriting it. Reload to continue editing.",
+      "warning",
+      0,
+      {
+        label: "Reload",
+        onClick: () => {
+          if (typeof window !== "undefined") window.location.reload();
+        },
+      },
+    );
+  });
 
   // Register all persistence $effects (localStorage autosave, server autosave, health check)
   initPersistenceEffects();
@@ -76,6 +110,25 @@
     );
   }
 
+  // Persist the workspace, honouring the twin-tab guard: paused layouts are
+  // skipped, and every hydrated body write (not just the active layout's) runs
+  // through its own per-layout Web Lock where available, so a non-active layout
+  // body is still serialised against a peer tab editing that same layout. Each
+  // lock is keyed per layout id, so writing many bodies never nests one lock.
+  // The tab-id stamp remains the real ping-pong guard; the lock only serialises
+  // concurrent writers when it can be taken.
+  function persistWorkspaceGuarded(snapshot: {
+    tabs: PersistTab[];
+    activeLayoutId: string | null;
+  }): Promise<void> {
+    return persistBrowserWorkspace({
+      ...snapshot,
+      isPaused: (layoutId) => twinTabGuard.isPaused(layoutId),
+      withLayoutLock: (layoutId, write) =>
+        twinTabGuard.withLayoutLock(layoutId, write),
+    });
+  }
+
   $effect(() => {
     if (getStorageMode() === "server") return;
     // Track the reactive surface: tab set, active id, and the active tab's
@@ -86,7 +139,7 @@
 
     if (workspaceSaveTimer) clearTimeout(workspaceSaveTimer);
     workspaceSaveTimer = setTimeout(() => {
-      persistBrowserWorkspace(snapshot);
+      void persistWorkspaceGuarded(snapshot);
       workspaceSaveTimer = null;
     }, 1000);
 
@@ -109,7 +162,12 @@
     }
     const snapshot = snapshotWorkspaceTabs();
     if (snapshot.tabs.length > 0 && hasPersistableContent()) {
-      persistBrowserWorkspace(snapshot);
+      // Synchronous last-chance write: skip paused layouts but do not await the
+      // Web Lock (pagehide cannot wait on async work).
+      persistBrowserWorkspace({
+        ...snapshot,
+        isPaused: (layoutId) => twinTabGuard.isPaused(layoutId),
+      });
     }
   }
 
@@ -131,6 +189,19 @@
       flushWorkspaceSave();
     }
     window.addEventListener("pagehide", handlePageHide);
+
+    // Twin-tab guard (#2044): a `storage` event fires in every OTHER same-origin
+    // tab when localStorage changes. A foreign write to a layout body pauses this
+    // tab's autosave for that layout id (browser mode only; server mode owns its
+    // own working copy).
+    function handleStorageEvent(event: StorageEvent) {
+      if (getStorageMode() === "server") return;
+      twinTabGuard.handleStorageEvent({
+        key: event.key,
+        newValue: event.newValue,
+      });
+    }
+    window.addEventListener("storage", handleStorageEvent);
 
     // Load bundled images for starter library devices
     imageStore.loadBundledImages();
@@ -155,6 +226,7 @@
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("pagehide", handlePageHide);
+      window.removeEventListener("storage", handleStorageEvent);
     };
   });
 

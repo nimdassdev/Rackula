@@ -114,6 +114,74 @@ describe("persistBrowserWorkspace", () => {
     expect(loadLayoutBody("shell").ok).toBe(false);
   });
 
+  it("skips a paused layout's body but still records it in the open set", async () => {
+    // Pre-seed b's body so we can prove the paused write leaves it untouched.
+    await persistBrowserWorkspace({
+      tabs: [tab({ layoutId: "b", changesSinceExport: 9 })],
+      activeLayoutId: "b",
+    });
+
+    await persistBrowserWorkspace({
+      tabs: [tab({ layoutId: "a" }), tab({ layoutId: "b", changesSinceExport: 1 })],
+      activeLayoutId: "a",
+      isPaused: (layoutId) => layoutId === "b",
+    });
+
+    const index = loadWorkspaceIndex();
+    // Both stay in the open set; a was written, b's body was skipped so its
+    // pre-seeded durability survives untouched (no clobber of the peer's copy).
+    expect(index!.openTabs).toEqual(["a", "b"]);
+    expect(index!.library.b.changesSinceExport).toBe(9);
+    expect(loadLayoutBody("a").ok).toBe(true);
+  });
+
+  it("keeps a paused tab in the library so it survives a persist+reload round-trip", async () => {
+    // A tab that is already paused on its first persist never reaches
+    // saveLayoutBody, which is the only path that writes its library entry. The
+    // index loop must still record it, otherwise its id lands in openTabs with
+    // no library entry and loadWorkspaceIndex drops it as dangling on reload,
+    // losing the tab even though the peer's body is intact in localStorage.
+    await persistBrowserWorkspace({
+      tabs: [tab({ layoutId: "a" }), tab({ layoutId: "paused" })],
+      activeLayoutId: "a",
+      isPaused: (layoutId) => layoutId === "paused",
+    });
+
+    // Reload the index the way the next launch would: openTabs is filtered to
+    // ids that have a library entry, so a surviving paused id proves the entry
+    // was written.
+    const index = loadWorkspaceIndex();
+    expect(index!.openTabs).toContain("paused");
+    expect(index!.library.paused).toBeDefined();
+  });
+
+  it("takes the per-layout lock for every hydrated body, not just the active one", async () => {
+    const locked: string[] = [];
+    const withLayoutLock = async <T>(
+      layoutId: string,
+      write: () => T,
+    ): Promise<T> => {
+      locked.push(layoutId);
+      return write();
+    };
+
+    await persistBrowserWorkspace({
+      tabs: [
+        tab({ layoutId: "a" }),
+        tab({ layoutId: "b" }),
+        { layoutId: "shell", hydrated: false, name: "Shell" },
+      ],
+      activeLayoutId: "a",
+      withLayoutLock,
+    });
+
+    // Both hydrated bodies (active a and non-active b) ran under their own lock;
+    // the unhydrated shell has no body so it is never locked.
+    expect(locked).toEqual(["a", "b"]);
+    expect(loadLayoutBody("a").ok).toBe(true);
+    expect(loadLayoutBody("b").ok).toBe(true);
+  });
+
   it("keeps a closed layout's durable copy when it leaves the open set", () => {
     persistBrowserWorkspace({
       tabs: [tab({ layoutId: "a" }), tab({ layoutId: "b" })],
