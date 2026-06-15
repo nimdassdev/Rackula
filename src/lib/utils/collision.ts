@@ -454,6 +454,68 @@ export function canPlaceInSlot(childType: DeviceType, slot: Slot): boolean {
 }
 
 /**
+ * Stable slugs of the synthesised carriers (defined in the starter library).
+ * The drag/drop layer and the import adapter both target these exact slugs.
+ */
+export const CARRIER_2COL_SLUG = "carrier-1u-2col";
+export const CARRIER_2X2_SLUG = "carrier-1u-2x2";
+
+/**
+ * Pick the carrier slug that a half-width device must mount inside, based on
+ * its height. Both synthesised carriers have half-width cells, so only
+ * half-width gear can be carrier-mounted: a half-height device needs the 2x2
+ * grid; a full-height device needs the 1-row 2-column carrier.
+ *
+ * Full-width devices (sub-U or whole-U) return null: there is no full-width
+ * carrier to synthesise, so they are not routed through the carrier path.
+ *
+ * @param deviceType - The device being placed
+ * @returns The carrier slug to synthesise, or null when no carrier applies
+ */
+export function synthesizeCarrierForDevice(
+  deviceType: DeviceType,
+): string | null {
+  // Only half-width gear fits the half-width carrier cells.
+  if ((deviceType.slot_width ?? 2) !== 1) {
+    return null;
+  }
+
+  // Sub-U (half-height) devices need the 2x2 grid; a full-height half-width
+  // device uses the 2-column carrier.
+  return Number.isInteger(deviceType.u_height)
+    ? CARRIER_2COL_SLUG
+    : CARRIER_2X2_SLUG;
+}
+
+/**
+ * The first free cell in a container, scanning slots in definition order.
+ * Slots are listed bottom-row-first in the starter library, so iterating in
+ * order fills the bottom row before the upper row of a 2x2 carrier. Each cell
+ * holds at most one child, so a slot with any child is considered occupied.
+ *
+ * @param containerType - The container DeviceType (with slots[])
+ * @param children - Placed children already in this container
+ * @returns The first free { slotId, position } or null when every cell is full
+ */
+export function findNextFreeChildPosition(
+  containerType: DeviceType,
+  children: PlacedDevice[],
+): { slotId: string; position: number } | null {
+  const slots = containerType.slots ?? [];
+  const occupied = new Set(
+    children.map((child) => child.slot_id).filter((id): id is string => !!id),
+  );
+
+  for (const slot of slots) {
+    if (!occupied.has(slot.id)) {
+      return { slotId: slot.id, position: 0 };
+    }
+  }
+
+  return null;
+}
+
+/**
  * Check if a device can be placed inside a container at a specific slot and position
  *
  * Container children:

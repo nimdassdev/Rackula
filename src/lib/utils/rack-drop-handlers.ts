@@ -143,9 +143,39 @@ export function dispatchDropAction(
           collisionContext.deviceLibrary,
           action.dragData,
           collisionContext.faceFilter,
-          null, // skip container detection
+          true, // skip container detection
         );
         dispatchDropAction(fallbackAction, callbacks, collisionContext);
+      }
+      break;
+    }
+    case "carrier-drop": {
+      if (!collisionContext?.layoutStore) break;
+      const { layoutStore } = collisionContext;
+      const success = layoutStore.placeDeviceSmart(
+        action.rackId,
+        action.slug,
+        action.targetU,
+        action.face,
+      );
+      if (!success) {
+        hapticError();
+        collisionContext.toastStore.showToast(
+          "No room for this device here",
+          "warning",
+          3000,
+        );
+        break;
+      }
+      if (
+        action.dragData.type === "rack-device" &&
+        action.dragData.sourceRackId &&
+        action.dragData.sourceIndex !== undefined
+      ) {
+        layoutStore.removeDeviceFromRack(
+          action.dragData.sourceRackId,
+          action.dragData.sourceIndex,
+        );
       }
       break;
     }

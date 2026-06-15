@@ -22,7 +22,10 @@ import {
   type ContainerHoverInfo,
   type ContainerDropTarget,
 } from "$lib/utils/dragdrop";
-import { findCollisions } from "$lib/utils/collision";
+import {
+  findCollisions,
+  synthesizeCarrierForDevice,
+} from "$lib/utils/collision";
 import { getDeviceDisplayName } from "$lib/utils/device";
 import { screenToSVG } from "$lib/utils/coordinates";
 
@@ -103,6 +106,14 @@ export type DropAction =
       dragData: DragData;
     }
   | {
+      kind: "carrier-drop";
+      rackId: string;
+      slug: string;
+      targetU: number;
+      face: DeviceFace;
+      dragData: DragData;
+    }
+  | {
       kind: "invalid";
       feedback: DropFeedback;
       targetU: number;
@@ -172,7 +183,6 @@ export function resolveDropTarget(
     dims.rackHeight,
     dims.uHeight,
     dims.rackPadding,
-    !Number.isInteger(device.u_height),
   );
 
   const deviceSlotWidth = device.slot_width ?? 2;
@@ -189,20 +199,45 @@ export function resolveDropTarget(
     rack,
     deviceLibrary,
     device,
-    targetU,
+    mouseY,
     xOffsetInRack,
     dims.rackWidth,
+    dims.rackHeight,
+    dims.uHeight,
+    faceFilter,
   );
 
-  const feedback = getDropFeedback(
-    rack,
-    deviceLibrary,
-    device.u_height,
-    targetU,
-    excludeIndex,
-    faceFilter,
-    slotPosition,
-  );
+  // Carrier-first: a sub-U / half-width device never lands on a bare rail. Its
+  // preview is valid when an existing carrier under the cursor has a free,
+  // fitting cell (resolvable drop target, not mere compatibility), or else when
+  // a synthesised 1U carrier would fit at this U.
+  const needsCarrier = synthesizeCarrierForDevice(device) !== null;
+  const resolvableContainerTarget = needsCarrier
+    ? detectContainerDropTarget(
+        rack,
+        deviceLibrary,
+        device,
+        mouseY,
+        xOffsetInRack,
+        dims.rackWidth,
+        dims.rackHeight,
+        dims.uHeight,
+        faceFilter,
+      )
+    : null;
+  const feedback = needsCarrier
+    ? resolvableContainerTarget
+      ? "valid"
+      : getDropFeedback(rack, deviceLibrary, 1, targetU, excludeIndex, "both")
+    : getDropFeedback(
+        rack,
+        deviceLibrary,
+        device.u_height,
+        targetU,
+        excludeIndex,
+        faceFilter,
+        slotPosition,
+      );
 
   return {
     targetU,
@@ -232,8 +267,8 @@ export function resolveDropAction(
   deviceLibrary: DeviceType[],
   dragData: DragData,
   faceFilter: DeviceFace | undefined,
-  /** Container selection ID. Pass null to skip container detection (used for fallthrough after failed container placement). */
-  selectedDeviceId?: string | null,
+  /** Set true to skip container detection (the fallthrough re-resolution after a failed container placement). */
+  skipContainer: boolean = false,
   slotPositionOverride?: SlotPosition,
 ): DropAction {
   const { mouseY, xOffsetInRack } = resolveCoordinates(coords, dims);
@@ -243,7 +278,6 @@ export function resolveDropAction(
     dims.rackHeight,
     dims.uHeight,
     dims.rackPadding,
-    !Number.isInteger(dragData.device.u_height),
   );
 
   const deviceSlotWidth = dragData.device.slot_width ?? 2;
@@ -255,27 +289,69 @@ export function resolveDropAction(
       deviceSlotWidth,
     );
 
-  // Check for container slot drop (requires container to be selected)
-  const containerTarget = detectContainerDropTarget(
-    rack,
-    deviceLibrary,
-    targetU,
-    xOffsetInRack,
-    dims.rackWidth,
-    selectedDeviceId,
-  );
+  // Carrier-first: a sub-U / half-width device must land inside a carrier.
+  const carrierSlug = synthesizeCarrierForDevice(dragData.device);
 
-  if (containerTarget) {
+  // Drop into the cell under the cursor when hovering a container with a free,
+  // fitting cell (y-aware: both column and row). Skipped on the failed-container
+  // fallback re-resolution.
+  if (!skipContainer) {
+    const containerTarget = detectContainerDropTarget(
+      rack,
+      deviceLibrary,
+      dragData.device,
+      mouseY,
+      xOffsetInRack,
+      dims.rackWidth,
+      dims.rackHeight,
+      dims.uHeight,
+      faceFilter,
+    );
+
+    if (containerTarget) {
+      return {
+        kind: "container-drop",
+        rackId: rack.id,
+        containerTarget,
+        slug: dragData.device.slug,
+        dragData,
+      };
+    }
+  }
+
+  const excludeIndex = deriveExcludeIndex(dragData, rack.id);
+
+  // No container under the cursor: a carriable device synthesises (or fills) a
+  // carrier at the target U via the store. Validate the 1U carrier rail slot.
+  if (carrierSlug) {
+    const carrierFeedback = getDropFeedback(
+      rack,
+      deviceLibrary,
+      1,
+      targetU,
+      excludeIndex,
+      "both",
+    );
+    if (carrierFeedback !== "valid") {
+      return {
+        kind: "invalid",
+        feedback: carrierFeedback,
+        targetU,
+        deviceHeight: 1,
+        slotPosition: "full",
+        excludeIndex,
+      };
+    }
     return {
-      kind: "container-drop",
+      kind: "carrier-drop",
       rackId: rack.id,
-      containerTarget,
       slug: dragData.device.slug,
+      targetU,
+      face: faceFilter ?? "front",
       dragData,
     };
   }
 
-  const excludeIndex = deriveExcludeIndex(dragData, rack.id);
   const feedback = getDropFeedback(
     rack,
     deviceLibrary,
