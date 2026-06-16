@@ -37,6 +37,7 @@ import {
   buildYamlFilename,
   extractUuidFromFolderName,
 } from "./folder-structure";
+import { isPlacementKey, deviceIdFromPlacementKey, layoutIdFromPlacementKey, placementKey } from "./placement-key";
 
 /**
  * Lazily load JSZip library
@@ -274,9 +275,10 @@ async function addLayoutFolderToZip(
 ): Promise<void> {
   // Generate or use provided metadata
   const layoutMetadata: LayoutMetadata = metadata ?? {
-    id: generateId(),
-    name: layout.name,
-    schema_version: "1.0",
+    id: layout.metadata?.id ?? generateId(),
+    name: layout.metadata?.name ?? layout.name,
+    schema_version: layout.metadata?.schema_version ?? "1.0",
+    description: layout.metadata?.description,
   };
 
   // Build folder name: "{Layout Name}-{UUID}"
@@ -306,9 +308,12 @@ async function addLayoutFolderToZip(
     }
 
     for (const [imageKey, deviceImages] of images) {
-      // Handle placement-specific images (key format: placement-{deviceId})
-      if (imageKey.startsWith("placement-")) {
-        const deviceId = imageKey.replace("placement-", "");
+      // Handle placement-specific images (key format: placement-{layoutId}:{deviceId})
+      if (isPlacementKey(imageKey)) {
+        // Skip images belonging to a different layout (multi-tab: same device UUID, different layout)
+        const keyLayoutId = layoutIdFromPlacementKey(imageKey);
+        if (keyLayoutId !== undefined && keyLayoutId !== layoutMetadata.id) continue;
+        const deviceId = deviceIdFromPlacementKey(imageKey);
         // Find the device across all racks to get its device_type slug for the folder path
         const placedDevice = layout.racks
           .flatMap((rack) => rack.devices)
@@ -483,6 +488,11 @@ async function extractNewFormatZip(
   const yamlContent = new TextDecoder().decode(yamlBytes);
   const layout = await parseLayoutYaml(yamlContent);
 
+  // Derive the layout id from the folder name UUID (canonical persisted identity).
+  const layoutId = (format.folderName && extractUuidFromFolderName(format.folderName))
+    || layout.metadata?.id
+    || "";
+
   // Extract images from assets folder
   const images: ImageStoreMap = new Map();
   const failedImages: string[] = [];
@@ -510,6 +520,7 @@ async function extractNewFormatZip(
         imagePath,
         deviceSlug,
         filename,
+        layoutId,
       );
 
       if (result.error) {
@@ -556,6 +567,8 @@ async function extractOldFormatZip(
   const yamlContent = new TextDecoder().decode(yamlBytes);
   const layout = await parseLayoutYaml(yamlContent);
 
+  const layoutId = layout.metadata?.id ?? "";
+
   // Old format: images at root level or in images/ folder
   const images: ImageStoreMap = new Map();
   const failedImages: string[] = [];
@@ -585,6 +598,7 @@ async function extractOldFormatZip(
         imagePath,
         deviceSlug,
         filename,
+        layoutId,
       );
 
       if (result.error) {
@@ -640,6 +654,7 @@ async function extractImageFromZip(
   imagePath: string,
   deviceSlug: string,
   filename: string,
+  layoutId: string = "",
 ): Promise<{
   imageKey?: string;
   face?: "front" | "rear";
@@ -660,10 +675,10 @@ async function extractImageFromZip(
     imageKey = deviceSlug;
     face = deviceTypeFaceMatch[1] as "front" | "rear";
   } else if (placementFaceMatch) {
-    // Placement-specific image
-    const deviceId = placementFaceMatch[1];
+    // Placement-specific image — namespace by layout id
+    const deviceId = placementFaceMatch[1]!;
     face = placementFaceMatch[2] as "front" | "rear";
-    imageKey = `placement-${deviceId}`;
+    imageKey = placementKey(layoutId, deviceId);
   } else {
     return {}; // Unknown format, skip
   }

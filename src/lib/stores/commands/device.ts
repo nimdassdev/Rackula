@@ -5,6 +5,7 @@
 import type { Command } from "./types";
 import type { PlacedDevice, DeviceFace } from "$lib/types";
 import { getImageStore } from "../images.svelte";
+import { placementKey } from "$lib/utils/placement-key";
 
 /**
  * Interface for layout store operations needed by device commands
@@ -96,6 +97,7 @@ export function createRemoveDeviceCommand(
   device: PlacedDevice,
   store: DeviceCommandStore,
   deviceName: string = "device",
+  layoutId: string = "",
 ): Command {
   // Store a deep copy of the device for restoration
   // structuredClone handles nested objects like ports and custom_fields
@@ -103,8 +105,8 @@ export function createRemoveDeviceCommand(
 
   // Snapshot placement images before removal for undo restoration
   const imageStore = getImageStore();
-  const imageKey = `placement-${device.id}`;
-  const imageSnapshot = imageStore.getAllImages().get(imageKey);
+  let currentImageId = device.id;
+  const imageSnapshot = imageStore.getAllImages().get(placementKey(layoutId, currentImageId));
   const snapshotCopy = imageSnapshot
     ? structuredClone(imageSnapshot)
     : undefined;
@@ -114,8 +116,8 @@ export function createRemoveDeviceCommand(
     description: `Remove ${deviceName}`,
     timestamp: Date.now(),
     execute() {
-      // Clean up placement images (moved from raw mutator)
-      getImageStore().removeAllDeviceImages(imageKey);
+      // Clean up placement images using current ID (may differ from original after undo remap)
+      getImageStore().removeAllDeviceImages(placementKey(layoutId, currentImageId));
       store.removeDeviceAtIndexRaw(index);
     },
     undo() {
@@ -123,10 +125,11 @@ export function createRemoveDeviceCommand(
       // Read back actual device — placeDeviceRaw may remap the ID (#1363 dedup guard)
       const placed = store.getDeviceAtIndex(placedIdx);
       const actualId = placed?.id ?? deviceCopy.id;
+      currentImageId = actualId;
       // Restore placement images under the (possibly remapped) key
       if (snapshotCopy) {
         const imgStore = getImageStore();
-        const actualKey = `placement-${actualId}`;
+        const actualKey = placementKey(layoutId, actualId);
         if (snapshotCopy.front)
           imgStore.setDeviceImage(actualKey, "front", snapshotCopy.front);
         if (snapshotCopy.rear)
@@ -304,15 +307,15 @@ export function createUpdateDeviceIpCommand(
  * Move placement image from one device ID key to another when placeDeviceRaw remaps the ID.
  * No-op if no image exists under the old key.
  */
-function rekeyPlacementImage(oldId: string, newId: string): void {
+function rekeyPlacementImage(oldId: string, newId: string, layoutId: string = ""): void {
   const imgStore = getImageStore();
-  const data = imgStore.getAllImages().get(`placement-${oldId}`);
+  const data = imgStore.getAllImages().get(placementKey(layoutId, oldId));
   if (!data) return;
   if (data.front)
-    imgStore.setDeviceImage(`placement-${newId}`, "front", data.front);
+    imgStore.setDeviceImage(placementKey(layoutId, newId), "front", data.front);
   if (data.rear)
-    imgStore.setDeviceImage(`placement-${newId}`, "rear", data.rear);
-  imgStore.removeAllDeviceImages(`placement-${oldId}`);
+    imgStore.setDeviceImage(placementKey(layoutId, newId), "rear", data.rear);
+  imgStore.removeAllDeviceImages(placementKey(layoutId, oldId));
 }
 
 /**
@@ -332,6 +335,7 @@ export function createCrossRackMoveCommand(
   children: PlacedDevice[],
   store: CrossRackMoveStore,
   deviceName: string = "device",
+  layoutId: string = "",
 ): Command {
   // Deep-copy all devices at command creation time to isolate from reactive state
   const parentCopy = structuredClone(parentDevice);
@@ -414,7 +418,7 @@ export function createCrossRackMoveCommand(
 
       // Re-key placement image if parent ID was remapped (#1478)
       if (actualParentId !== currentParentImageId) {
-        rekeyPlacementImage(currentParentImageId, actualParentId);
+        rekeyPlacementImage(currentParentImageId, actualParentId, layoutId);
         currentParentImageId = actualParentId;
       }
 
@@ -433,7 +437,7 @@ export function createCrossRackMoveCommand(
         const actualChildId = actualChild?.id ?? childToPlace.id;
         const previousChildImageId = currentChildImageIds[i];
         if (previousChildImageId && actualChildId !== previousChildImageId) {
-          rekeyPlacementImage(previousChildImageId, actualChildId);
+          rekeyPlacementImage(previousChildImageId, actualChildId, layoutId);
           currentChildImageIds[i] = actualChildId;
         }
       });
@@ -463,7 +467,7 @@ export function createCrossRackMoveCommand(
 
       // Re-key placement image and update source ID tracking if remapped (#1478)
       if (undoActualParentId !== currentParentImageId) {
-        rekeyPlacementImage(currentParentImageId, undoActualParentId);
+        rekeyPlacementImage(currentParentImageId, undoActualParentId, layoutId);
         currentParentImageId = undoActualParentId;
       }
       currentSourceDeviceIds[0] = undoActualParentId;
@@ -481,7 +485,7 @@ export function createCrossRackMoveCommand(
         const actualChildId = actualChild?.id ?? childToPlace.id;
         const previousChildImageId = currentChildImageIds[i];
         if (previousChildImageId && actualChildId !== previousChildImageId) {
-          rekeyPlacementImage(previousChildImageId, actualChildId);
+          rekeyPlacementImage(previousChildImageId, actualChildId, layoutId);
           currentChildImageIds[i] = actualChildId;
         }
         currentSourceDeviceIds[i + 1] = actualChildId;

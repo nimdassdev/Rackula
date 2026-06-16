@@ -6,6 +6,7 @@
 -->
 <script lang="ts">
   import { NewRackWizard, type CreateRackData } from "$lib/components/wizard";
+  import { placementKey } from "$lib/utils/placement-key";
   import AddDeviceForm from "$lib/components/AddDeviceForm.svelte";
   import ImportFromNetBoxDialog from "$lib/components/ImportFromNetBoxDialog.svelte";
   import ConfirmDialog from "$lib/components/ConfirmDialog.svelte";
@@ -320,9 +321,14 @@
       // getUsedDeviceTypeSlugs returns a fresh set we own, so we extend it in
       // place with per-placement keys rather than allocating another set.
       const usedImageKeys = layoutStore.getUsedDeviceTypeSlugs();
+      const nextLayoutId = nextLayout.metadata?.id;
       for (const rack of nextLayout.racks) {
         for (const device of rack.devices) {
-          usedImageKeys.add(`placement-${device.id}`);
+          usedImageKeys.add(
+            nextLayoutId
+              ? placementKey(nextLayoutId, device.id)
+              : `placement-${device.id}`,
+          );
         }
       }
       imageStore.cleanupOrphanedImages(usedImageKeys);
@@ -699,6 +705,7 @@
   rackGroups={layoutStore.rack_groups}
   deviceTypes={layoutStore.device_types}
   images={imageStore.getAllImages()}
+  layoutId={layoutStore.layout.metadata?.id}
   displayMode={uiStore.displayMode}
   layoutName={layoutStore.layout.name}
   selectedRackId={selectionStore.isRackSelected
