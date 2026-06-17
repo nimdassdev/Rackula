@@ -1,5 +1,5 @@
 /**
- * Pure verb bar positioning math (#2075)
+ * Pure verb bar positioning math (#2075, #2388)
  *
  * Computes where to render a floating verb bar relative to a selected object.
  * No DOM access, no globals - all inputs are plain numeric rects so the
@@ -8,9 +8,12 @@
  * Rules:
  * 1. LOW ZOOM: hidden when scale < VERB_BAR_LOW_ZOOM_THRESHOLD.
  * 2. HORIZONTAL: centred over the target, clamped within viewport margins.
- * 3. VERTICAL: always placed above the target. When space above is tight the
- *    bar may overlap the rack name label or sit partly off the top of the
- *    viewport rather than flipping below.
+ * 3. VERTICAL: placed above the target by default. Flips to below when the
+ *    computed above-top would be less than VERB_BAR_FLIP_THRESHOLD pixels
+ *    from the viewport top, so the bar does not occlude the device label
+ *    or sit off-screen when the device is near the rack header. The flipped
+ *    position is clamped to the viewport so a tall target (e.g. a rack) cannot
+ *    push the bar off-screen.
  */
 
 /** Viewport-space bounding rectangle using plain numbers (no DOM dependency). */
@@ -40,7 +43,7 @@ export interface VerbBarPositionInput {
   scale: number;
 }
 
-export type VerbBarPlacement = "above";
+export type VerbBarPlacement = "above" | "below";
 
 export interface VerbBarPosition {
   visible: boolean;
@@ -56,12 +59,19 @@ export const VERB_BAR_MARGIN = 8;
 export const VERB_BAR_LOW_ZOOM_THRESHOLD = 0.5;
 
 /**
+ * Minimum viewport-top distance (px) for the above position.
+ * When the computed above-top is less than this, the bar flips below the
+ * target to avoid occluding the device label or sitting off-screen.
+ */
+export const VERB_BAR_FLIP_THRESHOLD = 80;
+
+/**
  * Compute viewport coordinates for a floating verb bar.
  *
  * Returns visible:false when zoomed out below the threshold. Otherwise
- * returns the clamped horizontal position and the above vertical position.
- * The bar always sits above the target; when space is tight it may overlap
- * the rack name label or sit partly off the top of the viewport.
+ * returns the clamped horizontal position and a vertical position that is
+ * above the target by default, flipping to below when the device is near
+ * the top of the viewport.
  */
 export function computeVerbBarPosition(
   input: VerbBarPositionInput,
@@ -77,8 +87,19 @@ export function computeVerbBarPosition(
   const maxLeft = viewport.width - bar.width - VERB_BAR_MARGIN;
   const left = Math.max(VERB_BAR_MARGIN, Math.min(rawLeft, maxLeft));
 
-  // Vertical: always above the target.
-  const top = target.top - VERB_BAR_MARGIN - bar.height;
+  // Vertical: prefer above, but flip below when there is insufficient room.
+  const aboveTop = target.top - VERB_BAR_MARGIN - bar.height;
+  if (aboveTop < VERB_BAR_FLIP_THRESHOLD) {
+    // Clamp the flipped position to the viewport. A tall target (e.g. a rack
+    // container) can have its bottom far below the fold, which would otherwise
+    // push the bar off-screen and out of reach.
+    const maxTop = viewport.height - bar.height - VERB_BAR_MARGIN;
+    const top = Math.max(
+      VERB_BAR_MARGIN,
+      Math.min(target.bottom + VERB_BAR_MARGIN, maxTop),
+    );
+    return { visible: true, left, top, placement: "below" };
+  }
 
-  return { visible: true, left, top, placement: "above" };
+  return { visible: true, left, top: aboveTop, placement: "above" };
 }
