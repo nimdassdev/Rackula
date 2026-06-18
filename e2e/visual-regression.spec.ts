@@ -1,5 +1,5 @@
 import { test, expect } from "./helpers/base-test";
-import { createTestLayout, locators } from "./helpers";
+import { createTestLayout, locators, clickSettings } from "./helpers";
 import { dynamicMasks, gotoVisual, settle } from "./helpers/visual";
 
 /**
@@ -161,9 +161,9 @@ test.describe("visual regression", () => {
 
   test("dialog - settings", async ({ page }) => {
     await gotoVisual(page, POPULATED_URL, { theme: "light" });
-    // The gear button is wrapped by a tooltip trigger that also exposes the
-    // "Settings" accessible name, so target the action button by its testid.
-    await page.getByTestId("btn-settings").click();
+    // Settings moved into the app menu behind the logo (#2398); open it via the
+    // shared helper so the selector stays centralized.
+    await clickSettings(page);
     const dialog = page.getByRole("dialog", { name: "Settings" });
     await expect(dialog).toBeVisible();
     await settle(page);
