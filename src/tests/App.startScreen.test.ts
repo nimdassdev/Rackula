@@ -31,6 +31,7 @@ const persistenceStoreMocks = vi.hoisted(() => ({
   isApiAvailable: vi.fn(() => true),
   setApiAvailable: vi.fn(),
   getApiAvailableState: vi.fn(() => true),
+  getApiEverReached: vi.fn(() => true),
   getStorageMode: vi.fn(() => "server" as "browser" | "server"),
 }));
 
@@ -79,6 +80,7 @@ vi.mock("$lib/storage/availability.svelte", () => ({
   isApiAvailable: persistenceStoreMocks.isApiAvailable,
   setApiAvailable: persistenceStoreMocks.setApiAvailable,
   getApiAvailableState: persistenceStoreMocks.getApiAvailableState,
+  getApiEverReached: persistenceStoreMocks.getApiEverReached,
   getStorageMode: persistenceStoreMocks.getStorageMode,
 }));
 
@@ -129,6 +131,8 @@ describe("App entry (StartScreen removed, #2081)", { retry: 2, timeout: 30000 },
     persistenceStoreMocks.initializePersistence.mockResolvedValue(true);
     persistenceStoreMocks.isApiAvailable.mockReset();
     persistenceStoreMocks.isApiAvailable.mockReturnValue(true);
+    persistenceStoreMocks.getApiEverReached.mockReset();
+    persistenceStoreMocks.getApiEverReached.mockReturnValue(true);
     persistenceStoreMocks.getStorageMode.mockReset();
     persistenceStoreMocks.getStorageMode.mockReturnValue("server");
 

@@ -31,6 +31,7 @@ const persistenceStoreMocks = vi.hoisted(() => ({
   isApiAvailable: vi.fn(() => false),
   setApiAvailable: vi.fn(),
   getApiAvailableState: vi.fn(() => false),
+  getApiEverReached: vi.fn(() => false),
   getStorageMode: vi.fn(() => "server" as "browser" | "server"),
 }));
 
@@ -85,6 +86,7 @@ vi.mock("$lib/storage/availability.svelte", () => ({
   isApiAvailable: persistenceStoreMocks.isApiAvailable,
   setApiAvailable: persistenceStoreMocks.setApiAvailable,
   getApiAvailableState: persistenceStoreMocks.getApiAvailableState,
+  getApiEverReached: persistenceStoreMocks.getApiEverReached,
   getStorageMode: persistenceStoreMocks.getStorageMode,
 }));
 
@@ -139,6 +141,8 @@ function resetHoistedMocks(): void {
   persistenceStoreMocks.setApiAvailable.mockReset();
   persistenceStoreMocks.getApiAvailableState.mockReset();
   persistenceStoreMocks.getApiAvailableState.mockReturnValue(false);
+  persistenceStoreMocks.getApiEverReached.mockReset();
+  persistenceStoreMocks.getApiEverReached.mockReturnValue(false);
   persistenceStoreMocks.getStorageMode.mockReset();
   persistenceStoreMocks.getStorageMode.mockReturnValue("server");
 
