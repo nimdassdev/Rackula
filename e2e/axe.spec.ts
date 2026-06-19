@@ -25,6 +25,7 @@ import { expect } from "@playwright/test";
 import {
   createTestLayout,
   gotoWithRack,
+  gotoMobileWithRack,
   selectDevice,
   clickExport,
   clickSettings,
@@ -135,5 +136,68 @@ test.describe("axe accessibility scans", () => {
     await clickSettings(page);
     await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
     await expectNoA11yViolations(page, locators.dialog.root);
+  });
+});
+
+test.describe("axe accessibility scans - mobile viewport", () => {
+  test.beforeEach(async ({ page }) => {
+    await gotoMobileWithRack(page);
+  });
+
+  test("mobile canvas with bottom nav has no WCAG 2.2 AA violations", async ({
+    page,
+  }) => {
+    // Idle mobile canvas: the bottom nav is visible and no sheet is open.
+    await expectNoA11yViolations(page);
+  });
+
+  test("mobile Devices sheet has no WCAG 2.2 AA violations", async ({
+    page,
+  }) => {
+    await page.getByRole("button", { name: "Devices" }).click();
+    await expect(
+      page.getByRole("dialog", { name: "Device Library" }),
+    ).toBeVisible();
+    await expectNoA11yViolations(page, locators.mobile.bottomSheet);
+  });
+
+  test("mobile View sheet has no WCAG 2.2 AA violations", async ({ page }) => {
+    await page.getByRole("button", { name: "View" }).click();
+    await expect(page.getByRole("dialog", { name: "View" })).toBeVisible();
+    await expectNoA11yViolations(page, locators.mobile.bottomSheet);
+  });
+
+  test("mobile Layouts sheet has no WCAG 2.2 AA violations", async ({
+    page,
+  }) => {
+    await page.getByRole("button", { name: "Layouts" }).click();
+    await expect(page.getByRole("dialog", { name: "Layouts" })).toBeVisible();
+    await expectNoA11yViolations(page, locators.mobile.bottomSheet);
+  });
+
+  test("mobile Racks sheet has no WCAG 2.2 AA violations", async ({ page }) => {
+    await page.getByRole("button", { name: "Racks" }).click();
+    await expect(page.getByRole("dialog", { name: "Racks" })).toBeVisible();
+    await expectNoA11yViolations(page, locators.mobile.bottomSheet);
+  });
+
+  test("mobile Placing banner has no WCAG 2.2 AA violations", async ({
+    page,
+  }) => {
+    // Arm a device for placement so the PlacementIndicator banner renders.
+    await page.getByRole("button", { name: "Devices" }).click();
+    await expect(
+      page.locator(locators.device.paletteItem).first(),
+    ).toBeVisible();
+    await page.locator(locators.device.paletteItem).first().click();
+
+    // Wait for the sheet to close and the banner to appear.
+    await expect(
+      page
+        .getByRole("status")
+        .filter({ hasText: /placing:/i })
+        .first(),
+    ).toBeVisible();
+    await expectNoA11yViolations(page);
   });
 });

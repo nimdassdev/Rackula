@@ -112,6 +112,26 @@ describe("placement store", () => {
       const store = getPlacementStore();
       expect(() => store.cancelPlacement()).not.toThrow();
       expect(store.isPlacing).toBe(false);
+      // No active placement means nothing to announce to screen readers.
+      expect(store.placementAnnouncement).toBeNull();
+    });
+
+    it("sets placementAnnouncement to cancelled text", () => {
+      const store = getPlacementStore();
+      store.startPlacement(mockDevice);
+      store.cancelPlacement();
+      expect(store.placementAnnouncement).toBe("Placement cancelled");
+    });
+  });
+
+  describe("abandonPlacement()", () => {
+    it("resets placement state without an SR announcement", () => {
+      const store = getPlacementStore();
+      store.startPlacement(mockDevice);
+      store.abandonPlacement();
+      expect(store.isPlacing).toBe(false);
+      expect(store.pendingDevice).toBeNull();
+      expect(store.placementAnnouncement).toBeNull();
     });
   });
 
@@ -141,6 +161,8 @@ describe("placement store", () => {
       const store = getPlacementStore();
       expect(() => store.completePlacement()).not.toThrow();
       expect(store.isPlacing).toBe(false);
+      // No active placement means nothing to announce to screen readers.
+      expect(store.placementAnnouncement).toBeNull();
     });
   });
 
